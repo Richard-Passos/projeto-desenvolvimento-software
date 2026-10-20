@@ -1,5 +1,5 @@
 from instrument import Instrument
-from note import Note
+from note import Note, NoteId
 from octave import Octave
 from volume import Volume
 
@@ -23,3 +23,9 @@ class Voice:
 
     def notes(self) -> list[Note]:
         return self._notes
+
+    def default_note(self) -> Note:
+        return Note(NoteId.C, 0, 0, self.octave(), self.volume(), self.instrument())
+
+    def with_notes(self, notes: list[Note]) -> 'Voice':
+        return Voice(self._settings, notes)
