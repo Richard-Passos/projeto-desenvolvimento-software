@@ -1,6 +1,6 @@
-from instrument import Instrument
-from octave import Octave
-from volume import Volume
+from src.model.instrument import Instrument
+from src.model.octave import Octave
+from src.model.volume import Volume
 
 
 # TODO tests

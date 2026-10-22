@@ -1,5 +1,5 @@
-from midi_file import MidiFile
-from settings import Settings
+from src.model.midi_file import MidiFile
+from src.model.settings import Settings
 
 from .error import ParseError
 

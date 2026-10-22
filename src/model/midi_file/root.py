@@ -1,4 +1,4 @@
-from voice import Voice
+from src.model.voice import Voice
 
 
 # TODO voices to MidiFile conversion and tests

@@ -1,7 +1,7 @@
-from instrument import Instrument
-from note import Note
-from octave import Octave
-from volume import Volume
+from src.model.instrument import Instrument
+from src.model.note import Note
+from src.model.octave import Octave
+from src.model.volume import Volume
 
 from .settings import VoiceSettings
 

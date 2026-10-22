@@ -1,5 +1,5 @@
-from bpm import Bpm
-from voice import Voice
+from src.model.bpm import Bpm
+from src.model.voice import Voice
 
 
 # TODO tests

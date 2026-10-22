@@ -30,6 +30,12 @@ class TextFileTestCase(unittest.TestCase):
         self.folder = Path(self._tmp.name)
         self.target = self.folder / f'{self.file}{self.extension}'
 
+    def write(self, text: str) -> None:
+        self.target.write_bytes(text.encode(self.encoding))
+
+    def stored(self) -> str:
+        return self.target.read_bytes().decode(self.encoding)
+
 
 class PathTest(TextFileTestCase):
     def test_exposes_the_path_as_path(self) -> None:
@@ -60,7 +66,7 @@ class PathTest(TextFileTestCase):
 class WriteTest(TextFileTestCase):
     def test_saves_text_and_returns_true(self) -> None:
         self.assertTrue(TextFile(self.target).write('ABC'))
-        self.assertEqual(self.target.read_text(encoding=self.encoding), 'ABC')
+        self.assertEqual(self.stored(), 'ABC')
 
     def test_keeps_line_breaks_exactly_as_typed(self) -> None:
         TextFile(self.target).write('A\nB\r\nC\n')
@@ -75,21 +81,21 @@ class WriteTest(TextFileTestCase):
     def test_keeps_non_ascii_characters(self) -> None:
         TextFile(self.target).write('Lá é Sol?')
 
-        self.assertEqual(self.target.read_text(encoding=self.encoding), 'Lá é Sol?')
+        self.assertEqual(self.stored(), 'Lá é Sol?')
 
     def test_has_no_limit_of_characters_per_line(self) -> None:
         text = 'A' * 100_000
 
         TextFile(self.target).write(text)
 
-        self.assertEqual(self.target.read_text(encoding=self.encoding), text)
+        self.assertEqual(self.stored(), text)
 
     def test_overwrites_existing_file(self) -> None:
-        self.target.write_text('old', encoding=self.encoding)
+        self.write('old')
 
         TextFile(self.target).write('new')
 
-        self.assertEqual(self.target.read_text(encoding=self.encoding), 'new')
+        self.assertEqual(self.stored(), 'new')
 
     def test_returns_false_when_the_path_is_a_folder(self) -> None:
         self.target.mkdir()

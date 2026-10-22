@@ -10,11 +10,12 @@ from src.controller.input import (
 )
 from src.model.text_file import TextFile
 from src.model.text_parser import TextParser
+from src.model.text_parser.error import ParseError
 
 
-def make_parser(has_warnings: bool = False) -> Mock:
+def make_parser(has_errors: bool = False) -> Mock:
     parser = Mock(spec=TextParser)
-    parser.validate.return_value = Mock(has_warnings=has_warnings)
+    parser.validate.return_value = [ParseError(0, 'row')] if has_errors else []
     return parser
 
 
@@ -63,6 +64,11 @@ class InputControllerTestCase(unittest.TestCase):
             self.fail('load_file() returned None')
 
         return text_file
+
+    def write(self, text: str) -> None:
+        # Bytes, so the fixture is the same on every OS (write_text would
+        # turn \n into \r\n on Windows).
+        self.target.write_bytes(text.encode(self.encoding))
 
     def stored(self) -> str:
         return self.target.read_bytes().decode(self.encoding)
@@ -179,7 +185,7 @@ class SaveFileTest(InputControllerTestCase):
         self.assertTrue(self.target.exists())
 
     def test_overwrites_existing_file(self) -> None:
-        self.target.write_text('old', encoding=self.encoding)
+        self.write('old')
         controller = self.make_controller()
         controller.hydrate_textarea('new')
 
@@ -187,8 +193,8 @@ class SaveFileTest(InputControllerTestCase):
 
         self.assertEqual(self.stored(), 'new')
 
-    def test_saves_even_when_the_parser_reports_warnings(self) -> None:
-        self.parser = make_parser(has_warnings=True)
+    def test_saves_even_when_the_parser_reports_errors(self) -> None:
+        self.parser = make_parser(has_errors=True)
         controller = self.make_controller()
         controller.hydrate_textarea('ABC')
 
@@ -268,7 +274,7 @@ class SaveFileTest(InputControllerTestCase):
 
 class LoadFileTest(InputControllerTestCase):
     def test_loads_the_file_and_returns_the_text_file(self) -> None:
-        self.target.write_text('ABC', encoding=self.encoding)
+        self.write('ABC')
 
         result = self.load(self.make_controller())
 
@@ -285,14 +291,14 @@ class LoadFileTest(InputControllerTestCase):
 
     def test_loads_the_maximum_of_lines(self) -> None:
         text = make_lines(self.max_lines)
-        self.target.write_text(text, encoding=self.encoding)
+        self.write(text)
 
         result = self.load(self.make_controller())
 
         self.assertEqual(result.read(), text)
 
     def test_adds_default_extension_when_missing(self) -> None:
-        self.target.write_text('ABC', encoding=self.encoding)
+        self.write('ABC')
 
         result = self.load(self.make_controller(self.folder / self.file))
 
@@ -303,7 +309,7 @@ class LoadFileTest(InputControllerTestCase):
         self.assertFalse(self.target.exists())
 
     def test_loaded_text_becomes_the_current_text(self) -> None:
-        self.target.write_text('ABC', encoding=self.encoding)
+        self.write('ABC')
         controller = self.make_controller()
         controller.load_file()
         self.target.unlink()
@@ -313,7 +319,7 @@ class LoadFileTest(InputControllerTestCase):
         self.assertEqual(self.stored(), 'ABC')
 
     def test_loading_replaces_the_text_hydrated_before(self) -> None:
-        self.target.write_text('from disk', encoding=self.encoding)
+        self.write('from disk')
         controller = self.make_controller()
         controller.hydrate_textarea('typed')
 
@@ -324,7 +330,7 @@ class LoadFileTest(InputControllerTestCase):
 
     def test_more_than_the_maximum_of_lines_raises(self) -> None:
         text = make_lines(self.max_lines + 1)
-        self.target.write_text(text, encoding=self.encoding)
+        self.write(text)
 
         with self.assertRaises(InputControllerError) as context:
             self.make_controller().load_file()
@@ -335,7 +341,7 @@ class LoadFileTest(InputControllerTestCase):
 
     def test_rejected_file_is_not_cut_nor_changed(self) -> None:
         text = make_lines(self.max_lines + 1)
-        self.target.write_text(text, encoding=self.encoding)
+        self.write(text)
         controller = self.make_controller()
         controller.hydrate_textarea('typed')
 
@@ -347,7 +353,7 @@ class LoadFileTest(InputControllerTestCase):
 
     def test_rejected_file_on_disk_stays_untouched(self) -> None:
         text = make_lines(self.max_lines + 1)
-        self.target.write_text(text, encoding=self.encoding)
+        self.write(text)
 
         with self.assertRaises(InputControllerError):
             self.make_controller().load_file()
@@ -381,11 +387,11 @@ class LoadFileTest(InputControllerTestCase):
 
 
 class ValidateTextareaTest(InputControllerTestCase):
-    def test_returns_true_when_the_parser_has_no_warnings(self) -> None:
+    def test_returns_true_when_the_parser_has_no_errors(self) -> None:
         self.assertTrue(self.make_controller().validate_textarea('ABC'))
 
-    def test_returns_false_when_the_parser_reports_warnings(self) -> None:
-        self.parser = make_parser(has_warnings=True)
+    def test_returns_false_when_the_parser_reports_errors(self) -> None:
+        self.parser = make_parser(has_errors=True)
 
         self.assertFalse(self.make_controller().validate_textarea('ABC'))
 
@@ -406,7 +412,7 @@ class ValidateTextareaTest(InputControllerTestCase):
 
 class InputFlowTest(InputControllerTestCase):
     def test_open_a_txt_edit_it_and_save_it(self) -> None:
-        self.target.write_text('line 1\nline 2', encoding=self.encoding)
+        self.write('line 1\nline 2')
         controller = self.make_controller()
 
         loaded = self.load(controller).read()
