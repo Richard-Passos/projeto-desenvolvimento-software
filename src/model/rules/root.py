@@ -1,6 +1,6 @@
 from typing import Any
 
-from model.context import Context
+from model.context import Context, ContextTimeline
 from model.note import Note
 from model.rule import Rule
 from model.rule_bpm import BpmRule
@@ -18,7 +18,6 @@ type Match = tuple[Rule[Any], str]
 type Matches = list[Match]
 
 
-# TODO fix rest/contexts temporizer
 class Rules:
     DEFAULT_RULES: TRules = (
         NoteRule(),
@@ -44,27 +43,25 @@ class Rules:
         return matches
 
     def handle(
-        self, text: str, default_note: Note, contexts: Contexts
-    ) -> tuple[Notes, Contexts]:
-        note = default_note
+        self, text: str, default_note: Note, contexts: ContextTimeline
+    ) -> tuple[Notes, ContextTimeline]:
+        note: Note = default_note
         notes: Notes = []
-        new_contexts: Contexts = []
 
         matches = self.matches(text)[::-1]
-        previous_contexts = contexts[::-1]
 
         while matches:
             rule, text = matches.pop()
-            context = previous_contexts.pop() if previous_contexts else note.context()
+            context = contexts.get(note.end()) or note.context()
 
             note = note.with_context(context.merge(note.context()))
             note = rule.handle(text, note)
+            contexts.set(note.end(), note.context().merge(context))
 
             if isinstance(rule, type(self._appender)):
                 notes.append(note)
-                new_contexts.append(note.context().merge(context))
 
-        return notes, new_contexts
+        return notes, contexts
 
     def _match_next(self, text: str) -> Match:
         for rule in self._rules:
