@@ -1,8 +1,6 @@
 from enum import IntEnum
 
-from instrument import Instrument
-from octave import Octave
-from volume import Volume
+from model.context import Context
 
 
 class NoteId(IntEnum):
@@ -31,21 +29,11 @@ class NoteId(IntEnum):
 
 # TODO tests
 class Note:
-    def __init__(
-        self,
-        id: NoteId,
-        start: int,
-        duration: int,
-        octave: Octave,
-        volume: Volume,
-        instrument: Instrument,
-    ) -> None:
+    def __init__(self, id: NoteId, start: int, duration: int, context: Context) -> None:
         self._id: NoteId = id
         self._start: int = start
         self._duration: int = duration
-        self._octave: Octave = octave
-        self._volume: Volume = volume
-        self._instrument: Instrument = instrument
+        self._context: Context = context
 
     def id(self) -> NoteId:
         return self._id
@@ -56,11 +44,8 @@ class Note:
     def duration(self) -> int:
         return self._duration
 
-    def octave(self) -> Octave:
-        return self._octave
+    def context(self) -> Context:
+        return self._context
 
-    def volume(self) -> Volume:
-        return self._volume
-
-    def instrument(self) -> Instrument:
-        return self._instrument
+    def with_context(self, context: Context) -> 'Note':
+        return Note(self.id(), self.start(), self.duration(), context)
