@@ -8,7 +8,7 @@ class Bpm:
         return Bpm(self._current + self._step, self._step)
 
     def decrease(self) -> 'Bpm':
-        return Bpm(self._current + self._step, self._step)
+        return Bpm(self._current - self._step, self._step)
 
     def current(self) -> int:
         return self._current
