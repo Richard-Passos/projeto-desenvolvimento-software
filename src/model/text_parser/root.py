@@ -24,6 +24,7 @@ class TextParser:
         for i, row in enumerate(rows):
             voice = next(voices_cycle)
             default_note = voice.default_note()
+            contexts.set(default_note.start(), default_note.context())
 
             try:
                 notes, contexts = self._rules.handle(row, default_note, contexts)
