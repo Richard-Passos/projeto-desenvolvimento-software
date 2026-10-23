@@ -1,25 +1,23 @@
-from instrument import Instrument
-from note import Note
-from octave import Octave
-from volume import Volume
+from model.context import Context
+from model.note import Note, NoteId
 
-from .settings import VoiceSettings
+type Notes = list[Note]
 
 
 # TODO tests
 class Voice:
-    def __init__(self, settings: VoiceSettings, notes: list[Note]) -> None:
-        self._settings = settings
-        self._notes = notes
+    def __init__(self, context: Context, notes: Notes) -> None:
+        self._context: Context = context
+        self._notes: Notes = notes
 
-    def octave(self) -> Octave:
-        return self._settings.octave()
+    def context(self) -> Context:
+        return self._context
 
-    def volume(self) -> Volume:
-        return self._settings.volume()
-
-    def instrument(self) -> Instrument:
-        return self._settings.instrument()
-
-    def notes(self) -> list[Note]:
+    def notes(self) -> Notes:
         return self._notes
+
+    def default_note(self) -> Note:
+        return Note(id=NoteId.C, start=0, duration=0, context=self.context())
+
+    def with_notes(self, notes: Notes) -> 'Voice':
+        return Voice(self.context(), notes)
