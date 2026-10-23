@@ -1,434 +1,369 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 from src.controller.input import (
     InputController,
     InputControllerError,
     InputControllerErrorCode,
 )
-from src.model.text_file import TextFile
+from src.model.session import Session
+from src.model.text_file import TextFileError
 from src.model.text_parser import TextParser
-from src.model.text_parser.error import ParseError
+
+MAX_LINES = InputController.MAX_LINES
+MAX_LINE_LENGTH = InputController.MAX_LINE_LENGTH
+
+# Blank lines, spaces, a tab, CRLF, a non-ASCII character and a final break.
+TRICKY_TEXT = '  Lá  \r\n\n   \n\tB \n\n'
 
 
-def make_parser(has_errors: bool = False) -> Mock:
-    parser = Mock(spec=TextParser)
-    parser.validate.return_value = [ParseError(0, 'row')] if has_errors else []
-    return parser
-
-
-def make_lines(count: int, line: str = 'A') -> str:
-    return '\n'.join(f'{line}{number}' for number in range(count))
+def lines(count: int, trailing_break: bool = False) -> str:
+    text = '\n'.join('A' for _ in range(count))
+    return f'{text}\n' if trailing_break else text
 
 
 class InputControllerErrorTest(unittest.TestCase):
     def test_factories_build_the_matching_code(self) -> None:
-        code = InputControllerErrorCode
         cases = {
-            InputControllerError.empty_name(): code.EMPTY_NAME,
-            InputControllerError.empty_content(): code.EMPTY_CONTENT,
-            InputControllerError.too_many_lines(): code.TOO_MANY_LINES,
-            InputControllerError.read_failed(): code.READ_FAILED,
-            InputControllerError.write_failed(): code.WRITE_FAILED,
+            InputControllerError.empty_name(): InputControllerErrorCode.EMPTY_NAME,
+            InputControllerError.too_many_lines(): (
+                InputControllerErrorCode.TOO_MANY_LINES
+            ),
+            InputControllerError.line_too_long(): (
+                InputControllerErrorCode.LINE_TOO_LONG
+            ),
+            InputControllerError.read_failed(): InputControllerErrorCode.READ_FAILED,
+            InputControllerError.write_failed(): InputControllerErrorCode.WRITE_FAILED,
         }
 
-        for error, expected in cases.items():
-            with self.subTest(code=expected):
-                self.assertEqual(error.code, expected)
-                self.assertEqual(str(error), expected.value)
+        for error, code in cases.items():
+            with self.subTest(code=code):
+                self.assertEqual(error.code, code)
+                self.assertEqual(str(error), code.value)
 
 
 class InputControllerTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
-        self.encoding = TextFile.ENCODING
 
-        self.file = 'song'
-        self.extension = TextFile.DEFAULT_EXTENSION
         self.folder = Path(self._tmp.name)
-        self.target = self.folder / f'{self.file}{self.extension}'
+        self.session = self.folder / 'session.txt'
+        self.target = self.folder / 'song.txt'
 
-        self.parser = make_parser()
-        self.max_lines = InputController.MAX_LINES
+        self.parser = create_autospec(TextParser, instance=True)
+        self.parser.validate.return_value = []
+        self.controller = self.new_controller()
 
-    def make_controller(self, path: str | Path | None = None) -> InputController:
-        return InputController(self.target if path is None else path, self.parser)
-
-    def load(self, controller: InputController) -> TextFile:
-        text_file = controller.load_file()
-
-        if text_file is None:
-            self.fail('load_file() returned None')
-
-        return text_file
+    def new_controller(self) -> InputController:
+        """A fresh controller, like the app opening again."""
+        return InputController(self.parser, Session(self.session))
 
     def write(self, text: str) -> None:
-        # Bytes, so the fixture is the same on every OS (write_text would
-        # turn \n into \r\n on Windows).
-        self.target.write_bytes(text.encode(self.encoding))
+        self.target.write_bytes(text.encode('utf-8'))
 
-    def stored(self) -> str:
-        return self.target.read_bytes().decode(self.encoding)
+    def stored(self) -> bytes:
+        """What the Session text file holds."""
+        return self.session.read_bytes()
 
-
-class HydrateTextareaTest(InputControllerTestCase):
-    def test_accepts_text_and_returns_true(self) -> None:
-        self.assertTrue(self.make_controller().hydrate_textarea('ABC'))
-
-    def test_accepts_empty_text_so_the_user_can_clear_the_box(self) -> None:
-        self.assertTrue(self.make_controller().hydrate_textarea(''))
-
-    def test_accepts_exactly_the_maximum_of_lines(self) -> None:
-        text = make_lines(self.max_lines)
-
-        self.assertTrue(self.make_controller().hydrate_textarea(text))
-
-    def test_accepts_a_line_break_after_the_last_line(self) -> None:
-        text = make_lines(self.max_lines) + '\n'
-
-        self.assertTrue(self.make_controller().hydrate_textarea(text))
-
-    def test_rejects_more_than_the_maximum_of_lines(self) -> None:
-        text = make_lines(self.max_lines + 1)
-
-        self.assertFalse(self.make_controller().hydrate_textarea(text))
-
-    def test_rejects_text_made_of_too_many_blank_lines(self) -> None:
-        text = '\n' * (self.max_lines + 1)
-
-        self.assertFalse(self.make_controller().hydrate_textarea(text))
-
-    def test_rejects_windows_line_breaks_over_the_maximum(self) -> None:
-        text = '\r\n'.join('A' for _ in range(self.max_lines + 1))
-
-        self.assertFalse(self.make_controller().hydrate_textarea(text))
-
-    def test_has_no_limit_of_characters_per_line(self) -> None:
-        text = '\n'.join('A' * 10_000 for _ in range(self.max_lines))
-
-        self.assertTrue(self.make_controller().hydrate_textarea(text))
-
-    def test_rejected_text_keeps_the_previous_one(self) -> None:
-        controller = self.make_controller()
-        controller.hydrate_textarea('previous')
-
-        controller.hydrate_textarea(make_lines(self.max_lines + 1))
-        controller.save_file()
-
-        self.assertEqual(self.stored(), 'previous')
+    def block_session(self) -> None:
+        """Make the Session text file impossible to write."""
+        self.session.mkdir()
 
 
-class SaveFileTest(InputControllerTestCase):
-    def test_saves_the_hydrated_text_and_returns_the_text_file(self) -> None:
-        controller = self.make_controller()
-        controller.hydrate_textarea('ABC')
+class CreationTest(InputControllerTestCase):
+    def test_starts_empty_and_without_path(self) -> None:
+        self.assertEqual(self.controller.text, '')
+        self.assertIsNone(self.controller.path)
+        self.assertFalse(self.controller.has_unsaved_changes)
 
-        result = controller.save_file()
 
-        self.assertIsInstance(result, TextFile)
-        self.assertEqual(result.path, self.target)
-        self.assertEqual(self.stored(), 'ABC')
+class ExceededLimitTest(InputControllerTestCase):
+    def test_none_when_the_text_fits(self) -> None:
+        cases = {
+            'empty': '',
+            'one line': 'A',
+            'max lines': lines(MAX_LINES),
+            'max lines with a final break': lines(MAX_LINES, trailing_break=True),
+            'blank lines': '\n' * (MAX_LINES - 1) + 'A',
+            'max characters in a line': 'A' * MAX_LINE_LENGTH,
+            'max lines and characters': '\n'.join(['A' * MAX_LINE_LENGTH] * MAX_LINES),
+            'crlf is not part of the line': '\r\n'.join(
+                ['A' * MAX_LINE_LENGTH] * MAX_LINES
+            ),
+        }
 
-    def test_saves_the_last_hydrated_text(self) -> None:
-        controller = self.make_controller()
-        controller.hydrate_textarea('first')
-        controller.hydrate_textarea('second')
+        for name, text in cases.items():
+            with self.subTest(name):
+                self.assertIsNone(InputController.exceeded_limit(text))
 
-        controller.save_file()
+    def test_too_many_lines(self) -> None:
+        cases = {
+            'one more line': lines(MAX_LINES + 1),
+            'a line after the final break': lines(MAX_LINES, trailing_break=True) + 'B',
+            'blank lines count': '\n' * MAX_LINES + 'A',
+        }
 
-        self.assertEqual(self.stored(), 'second')
+        for name, text in cases.items():
+            with self.subTest(name):
+                self.assertEqual(
+                    InputController.exceeded_limit(text),
+                    InputControllerErrorCode.TOO_MANY_LINES,
+                )
 
-    def test_saves_every_line_exactly_as_written(self) -> None:
-        text = '  A  \n\n\tB\r\n' + 'C' * 5_000 + '\n'
-        controller = self.make_controller()
-        controller.hydrate_textarea(text)
+    def test_line_too_long_in_any_line(self) -> None:
+        text = f'A\n{"A" * (MAX_LINE_LENGTH + 1)}\nB'
 
-        controller.save_file()
+        self.assertEqual(
+            InputController.exceeded_limit(text),
+            InputControllerErrorCode.LINE_TOO_LONG,
+        )
 
-        self.assertEqual(self.stored(), text)
+    def test_too_many_lines_wins_over_line_too_long(self) -> None:
+        text = '\n'.join(['A' * (MAX_LINE_LENGTH + 1)] * (MAX_LINES + 1))
 
-    def test_saves_the_maximum_of_lines(self) -> None:
-        text = make_lines(self.max_lines)
-        controller = self.make_controller()
-        controller.hydrate_textarea(text)
+        self.assertEqual(
+            InputController.exceeded_limit(text),
+            InputControllerErrorCode.TOO_MANY_LINES,
+        )
 
-        controller.save_file()
 
-        self.assertEqual(self.stored(), text)
+class UpdateTextTest(InputControllerTestCase):
+    def test_keeps_the_text_exactly_as_typed_and_returns_true(self) -> None:
+        self.assertTrue(self.controller.update_text(TRICKY_TEXT))
+        self.assertEqual(self.controller.text, TRICKY_TEXT)
 
-    def test_keeps_non_ascii_characters(self) -> None:
-        controller = self.make_controller()
-        controller.hydrate_textarea('Lá é Sol?')
+    def test_rejects_text_over_the_limits_and_keeps_the_previous_text(self) -> None:
+        self.controller.update_text('previous')
+        cases = {
+            'too many lines': lines(MAX_LINES + 1),
+            'line too long': 'A' * (MAX_LINE_LENGTH + 1),
+        }
 
-        controller.save_file()
+        for name, text in cases.items():
+            with self.subTest(name):
+                self.assertFalse(self.controller.update_text(text))
+                self.assertEqual(self.controller.text, 'previous')
 
-        self.assertEqual(self.stored(), 'Lá é Sol?')
 
-    def test_adds_default_extension_when_missing(self) -> None:
-        controller = self.make_controller(self.folder / self.file)
-        controller.hydrate_textarea('ABC')
+class UnsavedChangesTest(InputControllerTestCase):
+    def test_tells_if_the_text_differs_from_the_saved_one(self) -> None:
+        self.assertFalse(self.controller.has_unsaved_changes)
 
-        result = controller.save_file()
+        self.controller.update_text('A')
+        self.assertTrue(self.controller.has_unsaved_changes)
 
-        self.assertEqual(result.path, self.target)
-        self.assertTrue(self.target.exists())
+        self.controller.save_file()
+        self.assertFalse(self.controller.has_unsaved_changes)
 
-    def test_accepts_path_as_string(self) -> None:
-        controller = self.make_controller(str(self.target))
-        controller.hydrate_textarea('ABC')
+        self.controller.update_text('AB')
+        self.assertTrue(self.controller.has_unsaved_changes)
 
-        controller.save_file()
+        self.controller.update_text('A')
+        self.assertFalse(self.controller.has_unsaved_changes)
 
-        self.assertTrue(self.target.exists())
 
-    def test_overwrites_existing_file(self) -> None:
-        self.write('old')
-        controller = self.make_controller()
-        controller.hydrate_textarea('new')
+class LoadFileTest(InputControllerTestCase):
+    def test_loads_the_text_and_stores_it_in_the_session(self) -> None:
+        self.write(TRICKY_TEXT)
+        self.controller.update_text('typed before')
 
-        controller.save_file()
+        text_file = self.controller.load_file(self.target)
 
-        self.assertEqual(self.stored(), 'new')
+        self.assertIsNotNone(text_file)
+        assert text_file is not None
+        self.assertEqual(text_file.path, self.target)
+        self.assertEqual(self.controller.text, TRICKY_TEXT)
+        self.assertEqual(self.controller.path, self.target)
+        self.assertFalse(self.controller.has_unsaved_changes)
+        self.assertEqual(self.stored(), f'{self.target}\n{TRICKY_TEXT}'.encode())
 
-    def test_saves_even_when_the_parser_reports_errors(self) -> None:
-        self.parser = make_parser(has_errors=True)
-        controller = self.make_controller()
-        controller.hydrate_textarea('ABC')
+    def test_never_changes_the_loaded_txt(self) -> None:
+        self.write('A\r\nB')
 
-        controller.save_file()
+        self.controller.load_file(self.target)
+        self.controller.update_text('changed')
+        self.controller.save_file()
 
-        self.assertEqual(self.stored(), 'ABC')
+        self.assertEqual(self.target.read_bytes(), b'A\r\nB')
 
-    def test_nothing_hydrated_raises_and_creates_no_file(self) -> None:
-        with self.assertRaises(InputControllerError) as context:
-            self.make_controller().save_file()
+    def test_without_path_reads_the_txt_of_the_previous_run(self) -> None:
+        self.write('A')
+        self.controller.load_file(self.target)
+        resumed = self.new_controller()
+        resumed.hydrate_textarea()
+        self.write('B')
 
-        self.assertFalse(self.target.exists())
-        self.assertEqual(context.exception.code, InputControllerErrorCode.EMPTY_CONTENT)
+        resumed.load_file()
 
-    def test_whitespace_only_content_counts_as_empty(self) -> None:
-        controller = self.make_controller()
-        controller.hydrate_textarea('  \n ')
+        self.assertEqual(resumed.text, 'B')
 
-        with self.assertRaises(InputControllerError) as context:
-            controller.save_file()
-
-        self.assertFalse(self.target.exists())
-        self.assertEqual(context.exception.code, InputControllerErrorCode.EMPTY_CONTENT)
-
-    def test_clearing_the_text_box_does_not_save_the_old_text(self) -> None:
-        controller = self.make_controller()
-        controller.hydrate_textarea('ABC')
-        controller.hydrate_textarea('')
-
-        with self.assertRaises(InputControllerError) as context:
-            controller.save_file()
-
-        self.assertFalse(self.target.exists())
-        self.assertEqual(context.exception.code, InputControllerErrorCode.EMPTY_CONTENT)
-
-    def test_empty_file_name_raises(self) -> None:
-        for path in ('', '   ', '.'):
+    def test_without_any_path_raises_empty_name(self) -> None:
+        for path in (None, '   '):
             with self.subTest(path=path):
-                controller = self.make_controller(path)
-                controller.hydrate_textarea('ABC')
-
                 with self.assertRaises(InputControllerError) as context:
-                    controller.save_file()
+                    self.controller.load_file(path)
 
                 self.assertEqual(
                     context.exception.code, InputControllerErrorCode.EMPTY_NAME
                 )
 
-    def test_empty_file_name_keeps_the_cause(self) -> None:
-        controller = self.make_controller('')
-        controller.hydrate_textarea('ABC')
+    def test_missing_file_returns_none_and_changes_nothing(self) -> None:
+        self.controller.update_text('previous')
 
-        with self.assertRaises(InputControllerError) as context:
-            controller.save_file()
+        self.assertIsNone(self.controller.load_file(self.target))
+        self.assertEqual(self.controller.text, 'previous')
+        self.assertIsNone(self.controller.path)
+        self.assertFalse(self.session.exists())
 
-        self.assertIsNotNone(context.exception.__cause__)
+    def test_file_over_the_limits_raises_and_changes_nothing(self) -> None:
+        self.controller.update_text('previous')
+        cases = {
+            InputControllerErrorCode.TOO_MANY_LINES: lines(MAX_LINES + 1),
+            InputControllerErrorCode.LINE_TOO_LONG: 'A' * (MAX_LINE_LENGTH + 1),
+        }
 
-    def test_path_that_is_a_folder_raises_write_failed(self) -> None:
-        self.target.mkdir()
-        controller = self.make_controller()
-        controller.hydrate_textarea('ABC')
+        for code, text in cases.items():
+            with self.subTest(code=code):
+                self.write(text)
 
-        with self.assertRaises(InputControllerError) as context:
-            controller.save_file()
+                with self.assertRaises(InputControllerError) as context:
+                    self.controller.load_file(self.target)
 
-        self.assertEqual(context.exception.code, InputControllerErrorCode.WRITE_FAILED)
+                self.assertEqual(context.exception.code, code)
+                self.assertEqual(self.controller.text, 'previous')
+                self.assertIsNone(self.controller.path)
+                self.assertFalse(self.session.exists())
 
-    def test_missing_folder_raises_write_failed(self) -> None:
-        controller = self.make_controller(self.folder / 'missing' / self.file)
-        controller.hydrate_textarea('ABC')
-
-        with self.assertRaises(InputControllerError) as context:
-            controller.save_file()
-
-        self.assertEqual(context.exception.code, InputControllerErrorCode.WRITE_FAILED)
-
-
-class LoadFileTest(InputControllerTestCase):
-    def test_loads_the_file_and_returns_the_text_file(self) -> None:
-        self.write('ABC')
-
-        result = self.load(self.make_controller())
-
-        self.assertEqual(result.path, self.target)
-        self.assertEqual(result.read(), 'ABC')
-
-    def test_returns_every_line_exactly_as_stored(self) -> None:
-        text = '  A  \n\n\tB\r\n' + 'C' * 5_000 + '\nLá é Sol?\n'
-        self.target.write_bytes(text.encode(self.encoding))
-
-        result = self.load(self.make_controller())
-
-        self.assertEqual(result.read(), text)
-
-    def test_loads_the_maximum_of_lines(self) -> None:
-        text = make_lines(self.max_lines)
-        self.write(text)
-
-        result = self.load(self.make_controller())
-
-        self.assertEqual(result.read(), text)
-
-    def test_adds_default_extension_when_missing(self) -> None:
-        self.write('ABC')
-
-        result = self.load(self.make_controller(self.folder / self.file))
-
-        self.assertEqual(result.path, self.target)
-
-    def test_returns_none_and_creates_no_file_when_it_does_not_exist(self) -> None:
-        self.assertIsNone(self.make_controller().load_file())
-        self.assertFalse(self.target.exists())
-
-    def test_loaded_text_becomes_the_current_text(self) -> None:
-        self.write('ABC')
-        controller = self.make_controller()
-        controller.load_file()
-        self.target.unlink()
-
-        controller.save_file()
-
-        self.assertEqual(self.stored(), 'ABC')
-
-    def test_loading_replaces_the_text_hydrated_before(self) -> None:
-        self.write('from disk')
-        controller = self.make_controller()
-        controller.hydrate_textarea('typed')
-
-        controller.load_file()
-        controller.save_file()
-
-        self.assertEqual(self.stored(), 'from disk')
-
-    def test_more_than_the_maximum_of_lines_raises(self) -> None:
-        text = make_lines(self.max_lines + 1)
-        self.write(text)
-
-        with self.assertRaises(InputControllerError) as context:
-            self.make_controller().load_file()
-
-        self.assertEqual(
-            context.exception.code, InputControllerErrorCode.TOO_MANY_LINES
-        )
-
-    def test_rejected_file_is_not_cut_nor_changed(self) -> None:
-        text = make_lines(self.max_lines + 1)
-        self.write(text)
-        controller = self.make_controller()
-        controller.hydrate_textarea('typed')
-
-        with self.assertRaises(InputControllerError):
-            controller.load_file()
-        controller.save_file()
-
-        self.assertEqual(self.stored(), 'typed')
-
-    def test_rejected_file_on_disk_stays_untouched(self) -> None:
-        text = make_lines(self.max_lines + 1)
-        self.write(text)
-
-        with self.assertRaises(InputControllerError):
-            self.make_controller().load_file()
-
-        self.assertEqual(self.stored(), text)
-
-    def test_empty_file_name_raises(self) -> None:
-        with self.assertRaises(InputControllerError) as context:
-            self.make_controller('').load_file()
-
-        self.assertEqual(context.exception.code, InputControllerErrorCode.EMPTY_NAME)
-
-    def test_path_that_is_a_folder_raises_read_failed_and_keeps_the_cause(
-        self,
-    ) -> None:
+    def test_read_failure_raises_and_keeps_the_cause(self) -> None:
         self.target.mkdir()
 
         with self.assertRaises(InputControllerError) as context:
-            self.make_controller().load_file()
+            self.controller.load_file(self.target)
 
         self.assertEqual(context.exception.code, InputControllerErrorCode.READ_FAILED)
-        self.assertIsNotNone(context.exception.__cause__)
+        self.assertIsInstance(context.exception.__cause__, TextFileError)
 
-    def test_invalid_encoding_raises_read_failed(self) -> None:
-        self.target.write_bytes(b'\xff\xfe\xfa')
+    def test_session_failure_raises_write_failed_and_changes_nothing(self) -> None:
+        self.block_session()
+        self.controller.update_text('previous')
+        self.write('A')
 
         with self.assertRaises(InputControllerError) as context:
-            self.make_controller().load_file()
+            self.controller.load_file(self.target)
 
-        self.assertEqual(context.exception.code, InputControllerErrorCode.READ_FAILED)
+        self.assertEqual(context.exception.code, InputControllerErrorCode.WRITE_FAILED)
+        self.assertEqual(self.controller.text, 'previous')
+        self.assertIsNone(self.controller.path)
+        self.assertTrue(self.controller.has_unsaved_changes)
+
+
+class SaveFileTest(InputControllerTestCase):
+    def test_works_without_path(self) -> None:
+        self.controller.update_text(TRICKY_TEXT)
+
+        text_file = self.controller.save_file()
+
+        self.assertIsNotNone(text_file)
+        assert text_file is not None
+        self.assertEqual(text_file.path, self.session)
+        self.assertEqual(self.stored(), f'\n{TRICKY_TEXT}'.encode())
+        self.assertIsNone(self.controller.path)
+
+    def test_stores_the_path_of_the_loaded_txt_with_the_text(self) -> None:
+        self.write('old')
+        self.controller.load_file(self.target)
+
+        self.controller.update_text('A\nB')
+        self.controller.save_file()
+
+        self.assertEqual(self.stored(), f'{self.target}\nA\nB'.encode())
+
+    def test_returns_none_when_there_is_nothing_new_to_save(self) -> None:
+        self.assertIsNone(self.controller.save_file())
+
+        self.controller.update_text('A')
+        self.controller.save_file()
+
+        self.assertIsNone(self.controller.save_file())
+
+    def test_failure_raises_write_failed_and_keeps_the_unsaved_mark(self) -> None:
+        self.block_session()
+        self.controller.update_text('A')
+
+        with self.assertRaises(InputControllerError) as context:
+            self.controller.save_file()
+
+        self.assertEqual(context.exception.code, InputControllerErrorCode.WRITE_FAILED)
+        self.assertTrue(self.controller.has_unsaved_changes)
 
 
 class ValidateTextareaTest(InputControllerTestCase):
-    def test_returns_true_when_the_parser_has_no_errors(self) -> None:
-        self.assertTrue(self.make_controller().validate_textarea('ABC'))
-
-    def test_returns_false_when_the_parser_reports_errors(self) -> None:
-        self.parser = make_parser(has_errors=True)
-
-        self.assertFalse(self.make_controller().validate_textarea('ABC'))
-
-    def test_sends_the_text_to_the_parser(self) -> None:
-        self.make_controller().validate_textarea('ABC')
-
+    def test_true_when_the_parser_has_no_warnings(self) -> None:
+        self.assertTrue(self.controller.validate_textarea('ABC'))
         self.parser.validate.assert_called_once_with('ABC')
 
-    def test_does_not_change_the_text_to_be_saved(self) -> None:
-        controller = self.make_controller()
-        controller.hydrate_textarea('saved')
+    def test_false_when_the_parser_has_warnings(self) -> None:
+        self.parser.validate.return_value = ['warning']
 
-        controller.validate_textarea('only validated')
-        controller.save_file()
-
-        self.assertEqual(self.stored(), 'saved')
+        self.assertFalse(self.controller.validate_textarea('ABC'))
 
 
-class InputFlowTest(InputControllerTestCase):
-    def test_open_a_txt_edit_it_and_save_it(self) -> None:
-        self.write('line 1\nline 2')
-        controller = self.make_controller()
+class HydrateTextareaTest(InputControllerTestCase):
+    def test_without_session_returns_empty_text(self) -> None:
+        self.assertEqual(self.controller.hydrate_textarea(), '')
+        self.assertIsNone(self.controller.path)
+        self.assertFalse(self.controller.has_unsaved_changes)
 
-        loaded = self.load(controller).read()
-        controller.hydrate_textarea(loaded + '\nline 3')
-        controller.save_file()
+    def test_resumes_the_saved_text_exactly_even_without_path(self) -> None:
+        self.controller.update_text(TRICKY_TEXT)
+        self.controller.save_file()
 
-        self.assertEqual(self.stored(), 'line 1\nline 2\nline 3')
+        resumed = self.new_controller()
 
-    def test_type_in_the_text_box_and_save_it(self) -> None:
-        controller = self.make_controller()
+        self.assertEqual(resumed.hydrate_textarea(), TRICKY_TEXT)
+        self.assertEqual(resumed.text, TRICKY_TEXT)
+        self.assertIsNone(resumed.path)
+        self.assertFalse(resumed.has_unsaved_changes)
 
-        for text in ('A', 'AB', 'AB\n', 'AB\nC'):
-            controller.hydrate_textarea(text)
-        controller.save_file()
+    def test_resumes_the_path_even_if_the_txt_is_gone(self) -> None:
+        self.write('A')
+        self.controller.load_file(self.target)
+        self.target.unlink()
 
-        self.assertEqual(self.stored(), 'AB\nC')
+        resumed = self.new_controller()
+        resumed.hydrate_textarea()
+
+        self.assertEqual(resumed.path, self.target)
+        self.assertEqual(resumed.text, 'A')
+
+    def test_unsaved_changes_are_not_resumed(self) -> None:
+        self.controller.update_text('saved')
+        self.controller.save_file()
+        self.controller.update_text('edited, never saved')
+
+        self.assertEqual(self.new_controller().hydrate_textarea(), 'saved')
+
+    def test_ignores_a_corrupted_session(self) -> None:
+        self.session.write_bytes(b'no line break here')
+
+        self.assertEqual(self.controller.hydrate_textarea(), '')
+        self.assertIsNone(self.controller.path)
+
+    def test_ignores_a_session_over_the_limits(self) -> None:
+        cases = {
+            'too many lines': lines(MAX_LINES + 1),
+            'line too long': 'A' * (MAX_LINE_LENGTH + 1),
+        }
+
+        for name, text in cases.items():
+            with self.subTest(name):
+                self.session.write_bytes(f'\n{text}'.encode())
+
+                self.assertEqual(self.controller.hydrate_textarea(), '')
+                self.assertEqual(self.controller.text, '')
 
 
 if __name__ == '__main__':

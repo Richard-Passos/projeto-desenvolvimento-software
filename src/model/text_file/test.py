@@ -38,11 +38,10 @@ class TextFileTestCase(unittest.TestCase):
 
 
 class PathTest(TextFileTestCase):
-    def test_exposes_the_path_as_path(self) -> None:
-        self.assertEqual(TextFile(str(self.target)).path, self.target)
-
-    def test_accepts_path_as_path(self) -> None:
-        self.assertEqual(TextFile(self.target).path, self.target)
+    def test_exposes_the_path_given_as_str_or_path(self) -> None:
+        for path in (str(self.target), self.target):
+            with self.subTest(type=type(path).__name__):
+                self.assertEqual(TextFile(path).path, self.target)
 
     def test_adds_default_extension_when_missing(self) -> None:
         text_file = TextFile(self.folder / self.file)
@@ -68,27 +67,12 @@ class WriteTest(TextFileTestCase):
         self.assertTrue(TextFile(self.target).write('ABC'))
         self.assertEqual(self.stored(), 'ABC')
 
-    def test_keeps_line_breaks_exactly_as_typed(self) -> None:
-        TextFile(self.target).write('A\nB\r\nC\n')
-
-        self.assertEqual(self.target.read_bytes(), b'A\nB\r\nC\n')
-
-    def test_keeps_blank_lines_and_spaces(self) -> None:
-        TextFile(self.target).write('  A  \n\n   \nB ')
-
-        self.assertEqual(self.target.read_bytes(), b'  A  \n\n   \nB ')
-
-    def test_keeps_non_ascii_characters(self) -> None:
-        TextFile(self.target).write('Lá é Sol?')
-
-        self.assertEqual(self.stored(), 'Lá é Sol?')
-
-    def test_has_no_limit_of_characters_per_line(self) -> None:
-        text = 'A' * 100_000
+    def test_keeps_the_text_exactly_as_typed(self) -> None:
+        text = '  Lá  \r\n\n   \nB \n\n'
 
         TextFile(self.target).write(text)
 
-        self.assertEqual(self.stored(), text)
+        self.assertEqual(self.target.read_bytes(), text.encode(self.encoding))
 
     def test_overwrites_existing_file(self) -> None:
         self.write('old')
@@ -96,11 +80,6 @@ class WriteTest(TextFileTestCase):
         TextFile(self.target).write('new')
 
         self.assertEqual(self.stored(), 'new')
-
-    def test_returns_false_when_the_path_is_a_folder(self) -> None:
-        self.target.mkdir()
-
-        self.assertFalse(TextFile(self.target).write('ABC'))
 
     def test_returns_false_when_the_folder_does_not_exist(self) -> None:
         target = self.folder / 'missing' / 'song.txt'
@@ -116,14 +95,6 @@ class ReadTest(TextFileTestCase):
         self.target.write_bytes('Lá\r\né Sol?\n'.encode(self.encoding))
 
         self.assertEqual(TextFile(self.target).read(), 'Lá\r\né Sol?\n')
-
-    def test_returns_what_was_written(self) -> None:
-        text = '  A  \r\n\n\tB\n\n'
-        text_file = TextFile(self.target)
-
-        text_file.write(text)
-
-        self.assertEqual(text_file.read(), text)
 
     def test_missing_file_raises_not_found_and_keeps_the_cause(self) -> None:
         with self.assertRaises(TextFileError) as context:
