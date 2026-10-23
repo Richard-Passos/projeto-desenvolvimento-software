@@ -37,11 +37,10 @@ class NoteRule(Rule[NoteMap]):
     def _handler(self, match: Rule.Match, note: Note) -> Note:
         id = self._map[match.group('NOTE')]
         duration = int(match.group('DURATION'))
-        note_end: int = note.start() + note.duration()
 
         return Note(
             id=id,
-            start=note_end,
+            start=note.end(),
             duration=duration,
             context=note.context(),
         )

@@ -44,6 +44,9 @@ class Note:
     def duration(self) -> int:
         return self._duration
 
+    def end(self) -> int:
+        return self._start + self._duration
+
     def context(self) -> Context:
         return self._context
 
