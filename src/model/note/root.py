@@ -50,5 +50,14 @@ class Note:
     def context(self) -> Context:
         return self._context
 
+    def pitch(self) -> int:
+        return 12 * (self._context.octave().current() + 1) + self.id().value
+
+    def instrument(self) -> int:
+        return self.context().instrument().id()
+
+    def volume(self) -> int:
+        return self.context().volume().current()
+
     def with_context(self, context: Context) -> 'Note':
         return Note(self.id(), self.start(), self.duration(), context)
