@@ -3,14 +3,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import create_autospec
 
-from src.controller.input import (
+from controller.input import (
     InputController,
     InputControllerError,
     InputControllerErrorCode,
 )
-from src.model.session import Session
-from src.model.text_file import TextFileError
-from src.model.text_parser import TextParser
+from model.session import Session
+from model.text_file import TextFileError
+from model.text_parser import TextParser
 
 MAX_LINES = InputController.MAX_LINES
 MAX_LINE_LENGTH = InputController.MAX_LINE_LENGTH

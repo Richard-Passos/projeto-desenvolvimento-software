@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from src.model.session import Session, SessionData
-from src.model.text_file import TextFile, TextFileError, TextFileErrorCode
-from src.model.text_parser import TextParser
+from model.session import Session, SessionData
+from model.text_file import TextFile, TextFileError, TextFileErrorCode
+from model.text_parser import TextParser
 
 from .error import InputControllerError, InputControllerErrorCode
 

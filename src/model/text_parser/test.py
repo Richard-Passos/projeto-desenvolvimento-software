@@ -1,7 +1,7 @@
 import unittest
 from typing import cast
 
-from model.rule import RuleError, Rules
+from model.rules import Rules, RulesError
 from model.voice import Voice
 
 from .error import ParseError, ParseErrorCode
@@ -38,7 +38,7 @@ class FakeRules:
         while text:
             self.matched.append(text[: self.match_length])
             if text.startswith('!'):
-                raise RuleError.no_match(self.matched[-1])
+                raise RulesError.no_match(self.matched[-1])
 
             text = text[self.match_length :]
 
@@ -48,7 +48,7 @@ class FakeRules:
         self.default_notes.append(default_note)
         self.notes.append(f'note-{text}')
         if text.startswith('!'):
-            raise RuleError.no_match(text)
+            raise RulesError.no_match(text)
 
         contexts.append(f'context-{text}')
 

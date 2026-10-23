@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.model.text_file import TextFile, TextFileError, TextFileErrorCode
+from model.text_file import TextFile, TextFileError, TextFileErrorCode
 
 
 class TextFileErrorTest(unittest.TestCase):

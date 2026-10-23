@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.model.text_file import TextFile, TextFileError
+from model.text_file import TextFile, TextFileError
 
 
 @dataclass(frozen=True, slots=True)

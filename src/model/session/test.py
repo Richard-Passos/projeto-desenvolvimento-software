@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.model.session import Session, SessionData
+from model.session import Session, SessionData
 
 
 class SessionTestCase(unittest.TestCase):
