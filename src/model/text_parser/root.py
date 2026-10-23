@@ -1,6 +1,6 @@
 from itertools import cycle
 
-from model.context import Context
+from model.context import ContextTimeline
 from model.rules import Rules, RulesError
 from model.voice import Voice
 
@@ -8,7 +8,6 @@ from .error import ParseError
 
 type Voices = list[Voice]
 type Errors = list[ParseError]
-type Contexts = list[Context]
 
 
 class TextParser:
@@ -16,14 +15,13 @@ class TextParser:
         self._voices: Voices = voices
         self._rules: Rules = rules
 
-    def parse(self, text: str) -> tuple[Voices, Contexts]:
-        rows = self._clean_rows(text)
+    def parse(self, text: str) -> tuple[Voices, ContextTimeline]:
         voices: Voices = []
-        contexts: Contexts = []
+        contexts = ContextTimeline()
+        rows = self._clean_rows(text)
         voices_cycle = cycle(self._voices)
 
         for i, row in enumerate(rows):
-            print('Row: ', row)
             voice = next(voices_cycle)
             default_note = voice.default_note()
 
