@@ -1,0 +1,16 @@
+[project]
+name = "my-project"
+version = "0.1.0"
+dependencies = [
+    "midiutil>=1.2.1",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["midiutil", "midiutil.*"]
+ignore_missing_imports = true
