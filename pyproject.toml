@@ -1,5 +1,6 @@
+
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,10 +8,18 @@ name = "desen-software"
 version = "0.1.0"
 description = "Projeto de desenvolvimento de software"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
-
+    "midiutil>=1.2.1",
+    "pygame-ce>=2.5.8",
 ]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["midiutil", "midiutil.*"]
+ignore_missing_imports = true
