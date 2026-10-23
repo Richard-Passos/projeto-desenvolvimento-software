@@ -1,3 +1,3 @@
-from .root import Context
+from .root import Context, ContextTimeline
 
-__all__ = ['Context']
+__all__ = ['Context', 'ContextTimeline']

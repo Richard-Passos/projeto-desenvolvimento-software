@@ -1,6 +1,7 @@
 from model.bpm import Bpm
 from model.instrument import Instrument
 from model.octave import Octave
+from model.timeline import Timeline
 from model.volume import Volume
 
 
@@ -33,3 +34,6 @@ class Context:
             octave=other.octave(),
             instrument=other.instrument(),
         )
+
+
+class ContextTimeline(Timeline[Context]): ...
