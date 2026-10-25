@@ -1,11 +1,10 @@
-from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 from model.text_file import TextFile, TextFileError
 
 
-@dataclass(frozen=True, slots=True)
-class SessionData:
+class SessionData(NamedTuple):
     """Where the user stopped: the open file (if any) and the text box content."""
 
     path: Path | None
@@ -28,11 +27,9 @@ class Session:
         """Raises TextFileError (EMPTY_PATH) if `path` has no file name."""
         self._file = TextFile(path)
 
-    @property
     def path(self) -> Path:
-        return self._file.path
+        return self._file.path()
 
-    @property
     def file(self) -> TextFile:
         """The text file where the session is stored."""
         return self._file
@@ -45,7 +42,7 @@ class Session:
             return False
 
         try:
-            self._file.path.parent.mkdir(parents=True, exist_ok=True)
+            self._file.path().parent.mkdir(parents=True, exist_ok=True)
         except OSError:
             return False
 

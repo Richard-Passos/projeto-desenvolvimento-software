@@ -15,21 +15,21 @@ class InputControllerError(Exception):
         self.code = code
 
     @classmethod
-    def empty_name(cls) -> 'InputControllerError':
+    def empty_name(cls) -> InputControllerError:
         return cls(InputControllerErrorCode.EMPTY_NAME)
 
     @classmethod
-    def too_many_lines(cls) -> 'InputControllerError':
+    def too_many_lines(cls) -> InputControllerError:
         return cls(InputControllerErrorCode.TOO_MANY_LINES)
 
     @classmethod
-    def line_too_long(cls) -> 'InputControllerError':
+    def line_too_long(cls) -> InputControllerError:
         return cls(InputControllerErrorCode.LINE_TOO_LONG)
 
     @classmethod
-    def read_failed(cls) -> 'InputControllerError':
+    def read_failed(cls) -> InputControllerError:
         return cls(InputControllerErrorCode.READ_FAILED)
 
     @classmethod
-    def write_failed(cls) -> 'InputControllerError':
+    def write_failed(cls) -> InputControllerError:
         return cls(InputControllerErrorCode.WRITE_FAILED)

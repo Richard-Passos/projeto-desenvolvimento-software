@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from .error import TextFileError
+from .error import TextFileError, TextFileErrorCode
 
 
 class TextFile:
@@ -16,7 +16,6 @@ class TextFile:
         """
         self._path = self._resolve(path)
 
-    @property
     def path(self) -> Path:
         return self._path
 
@@ -25,7 +24,7 @@ class TextFile:
         try:
             with self._path.open('w', encoding=self.ENCODING, newline='') as file:
                 file.write(text)
-        except (OSError, UnicodeEncodeError):
+        except OSError, UnicodeEncodeError:
             return False
 
         return True
@@ -40,18 +39,17 @@ class TextFile:
             with self._path.open(encoding=self.ENCODING, newline='') as file:
                 return file.read()
         except FileNotFoundError as error:
-            raise TextFileError.not_found() from error
+            raise TextFileError(TextFileErrorCode.NOT_FOUND) from error
         except (OSError, UnicodeDecodeError) as error:
-            raise TextFileError.read_failed() from error
+            raise TextFileError(TextFileErrorCode.READ_FAILED) from error
 
-    @classmethod
-    def _resolve(cls, path: str | Path) -> Path:
+    def _resolve(self, path: str | Path) -> Path:
         target = Path(path)
 
         if not str(path).strip() or not target.name:
-            raise TextFileError.empty_path()
+            raise TextFileError(TextFileErrorCode.EMPTY_PATH)
 
         if not target.suffix:
-            target = target.with_suffix(cls.DEFAULT_EXTENSION)
+            target = target.with_suffix(self.DEFAULT_EXTENSION)
 
         return target

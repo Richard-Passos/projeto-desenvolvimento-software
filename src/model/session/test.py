@@ -18,8 +18,8 @@ class SessionTestCase(unittest.TestCase):
 
 class CreationTest(SessionTestCase):
     def test_exposes_the_path_and_the_text_file(self) -> None:
-        self.assertEqual(self.session.path, self.target)
-        self.assertEqual(self.session.file.path, self.target)
+        self.assertEqual(self.session.path(), self.target)
+        self.assertEqual(self.session.file().path(), self.target)
 
 
 class SaveTest(SessionTestCase):

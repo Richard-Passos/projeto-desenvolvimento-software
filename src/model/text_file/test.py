@@ -6,15 +6,11 @@ from model.text_file import TextFile, TextFileError, TextFileErrorCode
 
 
 class TextFileErrorTest(unittest.TestCase):
-    def test_factories_build_the_matching_code(self) -> None:
-        cases = {
-            TextFileError.empty_path(): TextFileErrorCode.EMPTY_PATH,
-            TextFileError.not_found(): TextFileErrorCode.NOT_FOUND,
-            TextFileError.read_failed(): TextFileErrorCode.READ_FAILED,
-        }
-
-        for error, code in cases.items():
+    def test_keeps_its_code(self) -> None:
+        for code in TextFileErrorCode:
             with self.subTest(code=code):
+                error = TextFileError(code)
+
                 self.assertEqual(error.code, code)
                 self.assertEqual(str(error), code.value)
 
@@ -41,17 +37,17 @@ class PathTest(TextFileTestCase):
     def test_exposes_the_path_given_as_str_or_path(self) -> None:
         for path in (str(self.target), self.target):
             with self.subTest(type=type(path).__name__):
-                self.assertEqual(TextFile(path).path, self.target)
+                self.assertEqual(TextFile(path).path(), self.target)
 
     def test_adds_default_extension_when_missing(self) -> None:
         text_file = TextFile(self.folder / self.file)
 
-        self.assertEqual(text_file.path, self.target)
+        self.assertEqual(text_file.path(), self.target)
 
     def test_keeps_the_given_extension(self) -> None:
         target = self.folder / 'song.abc'
 
-        self.assertEqual(TextFile(target).path, target)
+        self.assertEqual(TextFile(target).path(), target)
 
     def test_empty_path_raises(self) -> None:
         for path in ('', '   ', '.', '/'):
