@@ -11,8 +11,8 @@ type Errors = list[ParseError]
 
 
 class TextParser:
-    def __init__(self, voices: Voices, rules: Rules) -> None:
-        self._voices: Voices = voices
+    def __init__(self, rules: Rules, *voices: Voice) -> None:
+        self._voices: tuple[Voice, ...] = voices
         self._rules: Rules = rules
 
     def parse(self, text: str) -> tuple[Voices, ContextTimeline]:
@@ -24,7 +24,7 @@ class TextParser:
         for i, row in enumerate(rows):
             voice = next(voices_cycle)
             default_note = voice.default_note()
-            contexts.set(default_note.start(), default_note.context())
+            contexts.set(0, voice.context())
 
             try:
                 notes, contexts = self._rules.handle(row, default_note, contexts)
