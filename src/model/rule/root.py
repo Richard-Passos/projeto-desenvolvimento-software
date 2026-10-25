@@ -5,7 +5,8 @@ from typing import Any
 from model.note import Note
 
 
-class Rule[Map: dict[Any, Any] | None](ABC):
+# TODO tests
+class Rule[Map: dict[Any, Any] | None = Any](ABC):
     type Match = re.Match[str]
 
     def __init__(self, map: Map | None = None) -> None:

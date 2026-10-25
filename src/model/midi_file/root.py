@@ -20,6 +20,7 @@ class MidiFile:
     ) -> None:
         self._path: str = path
         self._file = file or MIDIFile()
+        self._duration: int = 0
 
         self._handle_contexts(contexts)
         self._handle_voices(voices)
@@ -27,6 +28,9 @@ class MidiFile:
 
     def path(self) -> str:
         return self._path
+
+    def duration(self) -> float:
+        return self._duration
 
     def _handle_contexts(self, contexts: ContextTimeline) -> None:
         for start, context in contexts:
@@ -44,6 +48,7 @@ class MidiFile:
                     instrument = note.instrument()
 
                 self._add_note(channel, note)
+                self._duration = max(self._duration, note.end())
 
     def _add_instrument(self, channel: int, note: Note) -> None:
         self._file.addProgramChange(

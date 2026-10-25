@@ -1,5 +1,3 @@
-from typing import Any
-
 from model.context import Context, ContextTimeline
 from model.note import Note
 from model.rule import Rule
@@ -13,8 +11,8 @@ from .error import RulesError
 
 type Notes = list[Note]
 type Contexts = list[Context]
-type TRules = tuple[Rule[Any], ...]
-type Match = tuple[Rule[Any], str]
+type TRules = tuple[Rule, ...]
+type Match = tuple[Rule, str]
 type Matches = list[Match]
 
 
@@ -29,7 +27,7 @@ class Rules:
 
     def __init__(self, rules: TRules | None = None):
         self._rules: TRules = rules or self.DEFAULT_RULES
-        self._appender: Rule[Any] = self._rules[0]
+        self._appender: Rule = self._rules[0]
 
     def matches(self, text: str) -> Matches:
         i = 0
@@ -58,7 +56,7 @@ class Rules:
             note = rule.handle(text, note)
             contexts.set(note.end(), note.context().merge(context))
 
-            if isinstance(rule, type(self._appender)):
+            if rule == self._appender:
                 notes.append(note)
 
         return notes, contexts

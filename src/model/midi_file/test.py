@@ -33,6 +33,7 @@ class MidiFileTest(unittest.TestCase):
         note = Mock()
         note.start.return_value = start
         note.duration.return_value = duration
+        note.end.return_value = start + duration
         note.pitch.return_value = pitch
         note.volume.return_value = volume
         note.instrument.return_value = instrument
