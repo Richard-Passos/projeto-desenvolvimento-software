@@ -20,3 +20,7 @@ where = ["src"]
 [[tool.mypy.overrides]]
 module = ["midiutil", "midiutil.*"]
 ignore_missing_imports = true
+
+[tool.mypy]
+mypy_path = "src"
+explicit_package_bases = true
