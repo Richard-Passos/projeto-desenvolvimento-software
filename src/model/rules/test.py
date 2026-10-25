@@ -1,97 +1,79 @@
 import re
 import unittest
-from typing import Any, cast
-
-from model.context import Context
-from model.note import Note
-from model.rule import Rule
+from unittest.mock import Mock
 
 from .error import RulesError, RulesErrorCode
 from .root import Rules
 
-type Notes = list[Note]
-type Contexts = list[Context]
 
+# IA Code
+class RulesTest(unittest.TestCase):
+    def rules(self, *rules: Mock) -> Rules:
+        return Rules(rules)
 
-class FakeContext:
-    def __init__(self, name: str) -> None:
-        self.name = name
+    def context(self) -> Mock:
+        context = Mock()
+        context.merge.return_value = context
 
-    def merge(self, other: 'FakeContext') -> 'FakeContext':
-        return FakeContext(f'{self.name}+{other.name}')
+        return context
 
+    def note(self, context: Mock | None = None) -> Mock:
+        note = Mock()
+        note.context.return_value = context or self.context()
+        note.with_context.return_value = note
 
-class FakeNote:
-    def __init__(self, context: FakeContext) -> None:
-        self._context = context
-
-    def context(self) -> FakeContext:
-        return self._context
-
-    def with_context(self, context: FakeContext) -> 'FakeNote':
-        return FakeNote(context)
-
-
-class FakeRule:
-    def __init__(self, pattern: str) -> None:
-        self.pattern = pattern
-
-    def match(self, text: str) -> re.Match[str] | None:
-        return re.match(self.pattern, text)
-
-    def handle(self, _: str, note: Note) -> Note:
         return note
 
+    def rule(self, pattern: str) -> Mock:
+        rule = Mock()
+        rule.match.side_effect = lambda text: re.match(re.escape(pattern), text)
+        rule.handle.return_value = self.note()
 
-class FakeRuleAppender(FakeRule): ...
+        return rule
 
+    def contexts(self) -> Mock:
+        contexts = Mock()
+        contexts.get.return_value = None
 
-class RulesTest(unittest.TestCase):
-    def make_rules(self, *rules: FakeRule) -> Rules:
-        return Rules(cast(tuple[Rule[Any], ...], rules))
-
-    def make_note(self, name: str = 'default') -> Note:
-        return cast(Note, FakeNote(FakeContext(name)))
-
-    def make_contexts(self, *names: str) -> Contexts:
-        return cast(Contexts, [FakeContext(name) for name in names])
+        return contexts
 
 
 class MatchesTest(RulesTest):
     def test_empty_text_has_no_matches(self) -> None:
-        rules = self.make_rules(FakeRule(r'a'), FakeRule(r'b'))
+        rules = self.rules(self.rule('a'), self.rule('b'))
 
         self.assertEqual(rules.matches(''), [])
 
     def test_matches_single_rule(self) -> None:
-        rule = FakeRule(r'a')
-        rules = self.make_rules(rule)
+        rule = self.rule('a')
+        rules = self.rules(rule)
 
         self.assertEqual(rules.matches('a'), [(rule, 'a')])
 
     def test_matches_multiple_rules_in_order(self) -> None:
-        first = FakeRule(r'a')
-        second = FakeRule(r'b')
-        rules = self.make_rules(first, second)
+        first = self.rule('a')
+        second = self.rule('b')
+        rules = self.rules(first, second)
 
         self.assertEqual(rules.matches('ab'), [(first, 'a'), (second, 'b')])
 
     def test_matches_multi_characters(self) -> None:
-        first = FakeRule(r'ab')
-        second = FakeRule(r'cd')
-        rules = self.make_rules(first, second)
+        first = self.rule('ab')
+        second = self.rule('cd')
+        rules = self.rules(first, second)
 
         self.assertEqual(rules.matches('abcd'), [(first, 'ab'), (second, 'cd')])
 
     def test_uses_the_first_matching_rule(self) -> None:
-        first = FakeRule(r'a')
-        second = FakeRule(r'a')
-        rules = self.make_rules(first, second)
+        first = self.rule('a')
+        second = self.rule('a')
+        rules = self.rules(first, second)
 
         self.assertEqual(rules.matches('a'), [(first, 'a')])
+        second.match.assert_not_called()
 
     def test_raises_error_when_no_rule_matches(self) -> None:
-        rules = self.make_rules(FakeRule(r'a'))
+        rules = self.rules(self.rule('a'))
 
         with self.assertRaises(RulesError) as error:
             rules.matches('b')
@@ -99,7 +81,7 @@ class MatchesTest(RulesTest):
         self.assertEqual(error.exception.code(), RulesErrorCode.NO_MATCH)
 
     def test_raises_error_after_matching_a_prefix(self) -> None:
-        rules = self.make_rules(FakeRule(r'a'))
+        rules = self.rules(self.rule('a'))
 
         with self.assertRaises(RulesError) as error:
             rules.matches('ab')
@@ -107,7 +89,7 @@ class MatchesTest(RulesTest):
         self.assertEqual(error.exception.code(), RulesErrorCode.NO_MATCH)
 
     def test_ignores_zero_length_matches(self) -> None:
-        rules = self.make_rules(FakeRule(r''))
+        rules = self.rules(self.rule(''))
 
         with self.assertRaises(RulesError) as error:
             rules.matches('a')
@@ -116,32 +98,38 @@ class MatchesTest(RulesTest):
 
 
 class HandleTest(RulesTest):
-    def test_empty_text_returns_no_notes_or_contexts(self) -> None:
-        rules = self.make_rules(FakeRule(r'a'))
-        notes, contexts = rules.handle('', self.make_note(), self.make_contexts())
+    def test_empty_text_returns_no_notes_or_context_changes(self) -> None:
+        rules = self.rules(self.rule('a'))
+        contexts = self.contexts()
+
+        notes, result_contexts = rules.handle('', self.note(), contexts)
 
         self.assertEqual(notes, [])
-        self.assertEqual(contexts, [])
+        self.assertIs(result_contexts, contexts)
+        contexts.set.assert_not_called()
 
     def test_collects_notes_only_from_appender_rules(self) -> None:
-        appender = FakeRuleAppender(r'a')
-        other = FakeRule(r'b')
-        rules = self.make_rules(appender, other)
-        notes, _ = rules.handle('ab', self.make_note(), self.make_contexts())
+        appender = self.rule('a')
+        other = self.rule('b')
+        rules = self.rules(appender, other)
 
-        self.assertEqual(len(notes), 1)
+        notes, _ = rules.handle('ab', self.note(), self.contexts())
 
-    def test_falls_back_to_note_context_when_contexts_run_out(self) -> None:
-        rules = self.make_rules(FakeRule(r'a'), FakeRule(r'b'))
-        _, contexts = rules.handle('ab', self.make_note(), self.make_contexts())
+        self.assertEqual(notes, [appender.handle.return_value])
 
-        self.assertTrue(len(contexts), 2)
+    def test_updates_context_after_each_match(self) -> None:
+        rules = self.rules(self.rule('a'), self.rule('b'))
+        contexts = self.contexts()
+
+        rules.handle('ab', self.note(), contexts)
+
+        self.assertEqual(contexts.set.call_count, 2)
 
     def test_propagates_matching_errors(self) -> None:
-        rules = self.make_rules(FakeRule(r'a'))
+        rules = self.rules(self.rule('a'))
 
         with self.assertRaises(RulesError) as error:
-            rules.handle('ab', self.make_note(), self.make_contexts())
+            rules.handle('ab', self.note(), self.contexts())
 
         self.assertEqual(error.exception.code(), RulesErrorCode.NO_MATCH)
 
