@@ -4,14 +4,11 @@ from unittest.mock import MagicMock, patch
 
 from view.file_dialog import FileDialog
 
-MODULE = 'src.view.file_dialog.root'
+MODULE = 'view.file_dialog.root'
 
 
 class FileDialogTest(unittest.TestCase):
-    """The real dialogs need a person, so tkinter is replaced by mocks here.
-
-    To try the real ones, run `python -m src.view.file_dialog.demo`.
-    """
+    """The real dialogs need a person, so tkinter is replaced by mocks here."""
 
     def setUp(self) -> None:
         self.folder = Path('some') / 'folder'
@@ -60,6 +57,26 @@ class FileDialogTest(unittest.TestCase):
                 options = dialog.call_args.kwargs
                 self.assertEqual(options['initialdir'], str(self.folder))
                 self.assertIs(options['parent'], self.root)
+
+    def test_each_dialog_asks_for_what_it_is_for(self) -> None:
+        expected: dict[str, dict[str, object]] = {
+            'open': {'filetypes': FileDialog.TEXT_FILE_TYPES},
+            'save': {
+                'filetypes': FileDialog.TEXT_FILE_TYPES,
+                'defaultextension': '.txt',
+            },
+            'folder': {'mustexist': True},
+        }
+
+        for name, (ask, dialog) in self.kinds.items():
+            with self.subTest(name):
+                dialog.return_value = ''
+
+                ask()
+
+                options = dialog.call_args.kwargs
+                for option, value in expected[name].items():
+                    self.assertEqual(options[option], value)
 
     def test_closes_the_hidden_window_even_when_the_dialog_fails(self) -> None:
         for name, (ask, dialog) in self.kinds.items():
