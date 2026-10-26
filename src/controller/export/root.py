@@ -50,11 +50,16 @@ class ExportController:
 
         folder = self._choose_folder(destination_path)
 
-        if folder is None or ((folder / name).exists() and not overwrite):
+        if folder is None:
+            return False
+
+        target = folder / name
+
+        if target.exists() and not overwrite:
             return False
 
         try:
-            shutil.copyfile(source, folder / name)
+            shutil.copyfile(source, target)
         except OSError:
             return False
 
