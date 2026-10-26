@@ -1,3 +1,3 @@
-from .root import ExportController
+from .root import ExportController, ExportKind
 
 __all__ = ['ExportController', 'ExportKind']
