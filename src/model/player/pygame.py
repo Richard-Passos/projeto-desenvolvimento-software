@@ -1,6 +1,6 @@
 import pygame
 
-from model.player import Player
+from .root import Player
 
 
 # TODO tests
