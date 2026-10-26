@@ -2,7 +2,7 @@ from typing import TypedDict
 
 import pygame
 
-from src.model.text_limits import TextLimits
+from model.text_limits import TextLimits
 
 
 class VisualLine(TypedDict):
@@ -27,7 +27,7 @@ class TextBox:
         self.height = height
         self.x = x
         self.y = y if y is not None else (600 - height - 20)
-        self.limits = TextLimits() if limits is None else limits
+        self._limits = TextLimits() if limits is None else limits
 
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
         self.number_column_width = 45
@@ -45,20 +45,20 @@ class TextBox:
         self.dragging_scroll = False
         self._active = False
 
-    @property
     def text(self) -> str:
         return self._text
 
-    @text.setter
-    def text(self, value: str) -> None:
+    def set_text(self, value: str) -> None:
         self._text = value
         self.cursor_pos = len(self._text)
         self.selection_anchor = self.cursor_pos
         self.scroll_y = 0
 
-    @property
     def is_generated(self) -> bool:
         return self._active
+
+    def limits(self) -> TextLimits:
+        return self._limits
 
     def generate_text_area(self) -> None:
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
@@ -167,6 +167,7 @@ class TextBox:
         self.scroll_bg_color = (45, 45, 45)
 
     def _init_fonts(self) -> None:
+        pygame.font.init()
         self.font = pygame.font.SysFont('Courier New', 18)
         self.font_num = pygame.font.SysFont('Courier New', 14)
 
@@ -237,7 +238,7 @@ class TextBox:
         start, end = self._selection_bounds()
         new_text = self._text[:start] + value + self._text[end:]
 
-        if not self.limits.fits(new_text):
+        if not self._limits.fits(new_text):
             return
 
         self._text = new_text
