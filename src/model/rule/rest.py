@@ -1,5 +1,6 @@
 from model.note import Note
-from model.rule import Rule
+
+from .root import Rule
 
 
 # TODO tests

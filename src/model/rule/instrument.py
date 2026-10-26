@@ -1,7 +1,8 @@
 from model.context import Context
 from model.instrument import Instrument
 from model.note import Note
-from model.rule import Rule
+
+from .root import Rule
 
 type InstrumentMap = dict[str, Instrument]
 

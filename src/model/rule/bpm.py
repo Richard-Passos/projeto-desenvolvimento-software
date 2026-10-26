@@ -3,7 +3,8 @@ from collections.abc import Callable
 from model.bpm import Bpm
 from model.context import Context
 from model.note import Note
-from model.rule import Rule
+
+from .root import Rule
 
 type BpmMap = dict[str, Callable[[Bpm], Bpm]]
 

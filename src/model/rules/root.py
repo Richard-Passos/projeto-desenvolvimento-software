@@ -1,11 +1,6 @@
 from model.context import Context, ContextTimeline
 from model.note import Note
-from model.rule import Rule
-from model.rule_bpm import BpmRule
-from model.rule_instrument import InstrumentRule
-from model.rule_note import NoteRule
-from model.rule_octave import OctaveRule
-from model.rule_rest import RestRule
+from model.rule import BpmRule, InstrumentRule, NoteRule, OctaveRule, RestRule, Rule
 
 from .error import RulesError
 

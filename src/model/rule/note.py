@@ -1,5 +1,6 @@
 from model.note import Note, NoteId
-from model.rule import Rule
+
+from .root import Rule
 
 type NoteMap = dict[str, NoteId]
 

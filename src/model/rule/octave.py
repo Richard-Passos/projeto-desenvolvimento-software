@@ -3,7 +3,8 @@ from collections.abc import Callable
 from model.context import Context
 from model.note import Note
 from model.octave import Octave
-from model.rule import Rule
+
+from .root import Rule
 
 type OctaveMap = dict[str, Callable[[Octave], Octave]]
 
