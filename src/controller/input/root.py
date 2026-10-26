@@ -13,27 +13,21 @@ from .text_input import TextInput
 class InputController:
     """Controls how text gets in and out of the app.
 
-    The text lives in the text box (the View). The controller reads it from
-    there when it needs it, and fills the box when the text comes from
-    somewhere else: the last session, or a .txt that the user chooses in the
-    Open dialog of the system. The box itself keeps the typed text within the
-    limits (TextLimits); the text that comes from outside is checked here and
-    rejected whole, never truncated.
+    The text lives in the text box. The controller reads it from there when it
+    needs it, and fills the box when the text comes from somewhere else: the
+    last session, or a .txt that the user chooses in the Open dialog of the
+    system. The box keeps the typed text within the limits (TextLimits); the
+    text that comes from outside is checked here and rejected whole, never
+    truncated.
 
-    The controller doesn't create the text box. The View must call
-    `generate_text_area()` before `hydrate_textarea()` and `load_file()`;
-    without it they raise NO_TEXT_BOX.
+    The controller doesn't create the text box: `hydrate_textarea()` and
+    `load_file()` raise NO_TEXT_BOX until it exists.
 
-    "Saving" here means storing the text in the Session text file (first line
-    is the path of the last loaded .txt, if any; the rest is the text). That
-    is the only file written by this controller: it never changes a .txt of
-    the user, and "Save as" belongs to the ExportController. The path is
-    optional: without one the app works the same.
+    "Saving" means storing the text in the Session text file (first line is
+    the path of the last loaded .txt, if any; the rest is the text). That is
+    the only file written by this controller: it never changes a .txt of the
+    user ("Save as" belongs to the ExportController). The path is optional.
 
-    Model: Session (text file), TextFile (read a .txt) and TextParser
-    (validation).
-    View: TextInput, FileDialog (Open dialog), Save button / Ctrl+S and the
-    close event.
     Failures are raised as InputControllerError, one code per situation.
     """
 
@@ -64,8 +58,6 @@ class InputController:
 
         Without a text box there is nothing to save, so it is False.
         """
-        # TODO(View): on close, if True ask "Save before closing?"
-        # (Save -> save_file, Don't save, Cancel).
         return self._text_box.is_generated() and self.text() != self._saved_text
 
     def hydrate_textarea(self) -> bool:
@@ -82,15 +74,11 @@ class InputController:
         if data is None or not self._text_box.limits().fits(data.text):
             return False
 
-        self._path = data.path
-        self._text_box.set_text(data.text)
-        self._saved_text = data.text
+        self._show(data.path, data.text)
         return True
 
     def validate_textarea(self) -> bool:
         """Return True if the parser has no warnings for the current text."""
-        # TODO(View): call it now and then while the user types. When False,
-        # mark the text box as having warnings.
         return not self._text_parser.validate(self.text())
 
     def load_file(self, path: str | Path | None = None) -> TextFile | None:
@@ -102,45 +90,27 @@ class InputController:
         changed.
 
         Returns None if the user cancels the dialog or the file doesn't exist.
-        Nothing is loaded if it can't be read, has more than the lines or a
-        line longer than the characters of TextLimits; the text box and the
-        path stay as they were.
+        Nothing is loaded if it can't be read or is over the limits; the text
+        box and the path stay as they were.
         Raises InputControllerError: NO_TEXT_BOX, EMPTY_NAME, READ_FAILED,
         TOO_MANY_LINES, LINE_TOO_LONG or WRITE_FAILED (the Session couldn't
         store it).
         """
-        # TODO(View): the Open button calls this without `path`. If
-        # `has_unsaved_changes`, ask before calling it. The dialog blocks
-        # until the user chooses or cancels.
         self._require_text_box()
         chosen = path if path is not None else self._ask_path()
 
         if chosen is None:
             return None
 
-        text_file = self._open_file(chosen)
+        text_file = self._text_file(chosen)
+        text = self._read(text_file)
 
-        try:
-            text = text_file.read()
-        except TextFileError as error:
-            if error.code is TextFileErrorCode.NOT_FOUND:
-                # TODO(View): show "File not found".
-                return None
+        if text is None:
+            return None
 
-            # TODO(View): show "Could not read the file".
-            raise InputControllerError(InputControllerErrorCode.READ_FAILED) from error
-
-        limit = self._text_box.limits().exceeded(text)
-
-        if limit is not None:
-            # TODO(View): show "The file has more than 16 lines" or "The file
-            # has a line with more than 10000 characters".
-            raise self._limit_error(limit)
-
+        self._check_limits(text)
         self._store(text_file.path(), text)
-        self._path = text_file.path()
-        self._text_box.set_text(text)
-        self._saved_text = text
+        self._show(text_file.path(), text)
         return text_file
 
     def save_file(self) -> TextFile | None:
@@ -149,14 +119,12 @@ class InputController:
         Returns that text file, or None if there is nothing new to save.
         Raises InputControllerError: WRITE_FAILED.
         """
-        # TODO(View): the Save button and Ctrl+S call this.
         if not self.has_unsaved_changes():
             return None
 
         text = self.text()
         self._store(self._path, text)
         self._saved_text = text
-        # TODO(View): show "Saved" and clear the "unsaved changes" mark.
         return self._session.file()
 
     def _require_text_box(self) -> None:
@@ -167,20 +135,37 @@ class InputController:
         initial_dir = None if self._path is None else self._path.parent
         return self._file_dialog.ask_open_path(initial_dir)
 
-    def _store(self, path: Path | None, text: str) -> None:
-        if not self._session.save(SessionData(path, text)):
-            # TODO(View): show "Could not save the file".
-            raise InputControllerError(InputControllerErrorCode.WRITE_FAILED)
-
-    def _open_file(self, path: str | Path) -> TextFile:
+    def _text_file(self, path: str | Path) -> TextFile:
         try:
             return TextFile(path)
         except TextFileError as error:
-            # TODO(View): show "Choose a file name".
             raise InputControllerError(InputControllerErrorCode.EMPTY_NAME) from error
 
-    def _limit_error(self, limit: TextLimit) -> InputControllerError:
-        if limit is TextLimit.TOO_MANY_LINES:
-            return InputControllerError(InputControllerErrorCode.TOO_MANY_LINES)
+    def _read(self, text_file: TextFile) -> str | None:
+        """The text of the file, or None if the file doesn't exist."""
+        try:
+            return text_file.read()
+        except TextFileError as error:
+            if error.code is TextFileErrorCode.NOT_FOUND:
+                return None
 
-        return InputControllerError(InputControllerErrorCode.LINE_TOO_LONG)
+            raise InputControllerError(InputControllerErrorCode.READ_FAILED) from error
+
+    def _check_limits(self, text: str) -> None:
+        limit = self._text_box.limits().exceeded(text)
+
+        if limit is TextLimit.TOO_MANY_LINES:
+            raise InputControllerError(InputControllerErrorCode.TOO_MANY_LINES)
+
+        if limit is TextLimit.LINE_TOO_LONG:
+            raise InputControllerError(InputControllerErrorCode.LINE_TOO_LONG)
+
+    def _store(self, path: Path | None, text: str) -> None:
+        if not self._session.save(SessionData(path, text)):
+            raise InputControllerError(InputControllerErrorCode.WRITE_FAILED)
+
+    def _show(self, path: Path | None, text: str) -> None:
+        """Put `text` in the text box as the saved text of `path`."""
+        self._path = path
+        self._text_box.set_text(text)
+        self._saved_text = text
