@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Executar UI - Protótipo",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"src/ui/executar_ui.py"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
