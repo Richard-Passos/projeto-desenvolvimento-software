@@ -9,6 +9,7 @@ from utils.error import OutOfRangeError
 from .root import MidiFile
 
 
+# TODO tests
 class MidiFileGenerator:
     TRACK: int = 0
     MIN_VOICES: int = 0
@@ -20,7 +21,7 @@ class MidiFileGenerator:
 
     def generate(self, path: str, music: MusicTimeline) -> MIDIFile:
         if not self.MIN_VOICES <= len(music.voices()) <= self.MAX_VOICES:
-            raise VoicesOutOfRangeMidiFileGeneratorError(
+            raise VoicesOutOfRangeError(
                 len(music.voices()), self.MIN_VOICES, self.MAX_VOICES
             )
 
@@ -65,4 +66,4 @@ class MidiFileGenerator:
             self._file.writeFile(file)
 
 
-class VoicesOutOfRangeMidiFileGeneratorError(OutOfRangeError): ...
+class VoicesOutOfRangeError(OutOfRangeError): ...
