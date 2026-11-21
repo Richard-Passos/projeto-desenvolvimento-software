@@ -1,51 +1,47 @@
-from itertools import cycle
+from collections.abc import Sequence
+from typing import Protocol
 
-from model.context import ContextTimeline
-from model.rules import Rules, RulesError
-from model.voice import Voice
+from model.command import Command
+from model.music import Music, MusicControl, MusicTimeline
+from utils.error import Error
+from utils.type import Match
 
-from .error import ParseError
 
-type Voices = list[Voice]
-type Errors = list[ParseError]
+class Matcher(Protocol):
+    def match(self, text: str) -> Match | None: ...
+
+    def command(self, match: Match) -> Command[MusicControl]: ...
 
 
 class TextParser:
-    def __init__(self, rules: Rules, *voices: Voice) -> None:
-        self._voices: tuple[Voice, ...] = voices
-        self._rules: Rules = rules
+    def __init__(self, matchers: Sequence[Matcher]) -> None:
+        self._matchers = matchers
 
-    def parse(self, text: str) -> tuple[Voices, ContextTimeline]:
-        voices: Voices = []
-        contexts = ContextTimeline()
-        rows = self._clean_rows(text)
-        voices_cycle = cycle(self._voices)
+    def parse(self, text: str, music: Music) -> MusicTimeline:
+        control = MusicControl(music)
 
-        for i, row in enumerate(rows):
-            voice = next(voices_cycle)
-            default_note = voice.default_note()
-            contexts.set(0, voice.context())
+        for content in text.splitlines():
+            control.add_voice()
+            commands = self._commands(content)
 
-            try:
-                notes, contexts = self._rules.handle(row, default_note, contexts)
-                voices.append(voice.with_notes(notes))
-            except RulesError as error:
-                raise ParseError.rule(i, error.text())
+            for command in commands:
+                command.execute(control)
 
-        return voices, contexts
+        return control.timeline()
 
-    def validate(self, text: str) -> Errors:
-        rows = self._clean_rows(text)
-        errors: Errors = []
+    def _commands(self, text: str) -> Sequence[Command[MusicControl]]:
+        commands: list[Command[MusicControl]] = []
 
-        for i, row in enumerate(rows):
-            try:
-                self._rules.matches(row)
-            except RulesError as error:
-                errors.append(ParseError.rule(i, error.text()))
+        while text:
+            for matcher in self._matchers:
+                if match := matcher.match(text):
+                    commands.append(matcher.command(match))
+                    text = text[match.end() :]
+                    break
+            else:
+                raise NoMatchTextParserError(text)
 
-        return errors
+        return commands
 
-    def _clean_rows(self, text: str) -> list[str]:
-        rows = text.split('\n')
-        return [row.strip() for row in rows if row.strip()]
+
+class NoMatchTextParserError(Error[str]): ...

@@ -1,4 +1,3 @@
-from .error import ParseError, ParseErrorCode
-from .root import TextParser
+from .root import NoRuleMatchTextParserError, TextParser
 
-__all__ = ['ParseError', 'ParseErrorCode', 'TextParser']
+__all__ = ['NoRuleMatchTextParserError', 'TextParser']
