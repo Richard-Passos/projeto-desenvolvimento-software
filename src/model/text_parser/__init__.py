@@ -1,3 +1,3 @@
-from .root import NoRuleMatchTextParserError, TextParser
+from .root import TextParser
 
-__all__ = ['NoRuleMatchTextParserError', 'TextParser']
+__all__ = ['TextParser']
