@@ -26,7 +26,7 @@ class VoiceControl:
 
     def rest(self, duration: int) -> None:
         if duration <= 0:
-            raise NonPositiveDurationVoiceControlError(duration)
+            raise NonPositiveDurationError(duration)
 
         self._time += duration
 
@@ -42,4 +42,4 @@ class VoiceControl:
         self._voice = voice
 
 
-class NonPositiveDurationVoiceControlError(Error[int]): ...
+class NonPositiveDurationError(Error[int]): ...

@@ -19,7 +19,7 @@ class Playback:
         self._state: PlaybackState = PlaybackState.STOPPED
 
         if not player.load(file.path()):
-            raise LoadFailedPlaybackError(file.path())
+            raise LoadFailedError(file.path())
 
     def play(self) -> None:
         if self.state() is PlaybackState.PLAYING:
@@ -67,4 +67,4 @@ class Playback:
         return self._state
 
 
-class LoadFailedPlaybackError(Error[str]): ...
+class LoadFailedError(Error[str]): ...

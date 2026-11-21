@@ -38,7 +38,7 @@ class Note:
         self, id: NoteId, duration: int, volume: Volume, octave: Octave
     ) -> None:
         if not self.in_range(duration):
-            raise DurationOutOfRangeNoteError(
+            raise DurationOutOfRangeError(
                 duration, self.MIN_DURATION, self.MAX_DURATION
             )
 
@@ -82,4 +82,4 @@ class Note:
         return cls.MIN_DURATION <= duration <= cls.MAX_DURATION
 
 
-class DurationOutOfRangeNoteError(OutOfRangeError): ...
+class DurationOutOfRangeError(OutOfRangeError): ...
