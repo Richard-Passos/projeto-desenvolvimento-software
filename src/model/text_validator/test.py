@@ -1,20 +1,23 @@
+import re
 import unittest
+
+from utils.type import Match
 
 from .root import TextValidator
 
 
-class LiteralMatcher:
-    def __init__(self, token: str) -> None:
-        self.token = token
-
-    def match(self, text: str) -> str:
-        return self.token if text.startswith(self.token) else ''
-
-
 # IA Code
+class LiteralMatcher:
+    def __init__(self, _pattern: str) -> None:
+        self._pattern = _pattern
+
+    def match(self, text: str) -> Match | None:
+        return re.match(self._pattern, text)
+
+
 class TestTextValidator(unittest.TestCase):
     def setUp(self) -> None:
-        self.validator = TextValidator([LiteralMatcher('C:3'), LiteralMatcher('D:2')])
+        self.validator = TextValidator([LiteralMatcher(r'C:3'), LiteralMatcher(r'D:2')])
 
     def test_empty_text(self) -> None:
         self.assertEqual(self.validator.validate(''), [])
