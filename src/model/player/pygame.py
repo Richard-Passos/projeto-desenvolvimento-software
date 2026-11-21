@@ -9,8 +9,13 @@ class PygamePlayer(Player):
         pygame.mixer.init()
         self._music = pygame.mixer.music
 
-    def load(self, path: str) -> None:
-        self._music.load(path)
+    def load(self, path: str) -> bool:
+        try:
+            self._music.load(path)
+        except FileNotFoundError, pygame.error:
+            return False
+
+        return True
 
     def play(self) -> None:
         self._music.play()
