@@ -3,11 +3,11 @@ from collections.abc import Iterator
 
 
 # IA CODE
-# TODO test
+# TODO tests
 class Timeline[T]:
-    def __init__(self) -> None:
-        self._values: dict[int, T] = {}
-        self._indices: list[int] = []
+    def __init__(self, initial: T | None = None) -> None:
+        self._values: dict[int, T] = {} if initial is None else {0: initial}
+        self._indices: list[int] = [] if initial is None else [0]
 
     def set(self, index: int, value: T) -> None:
         if index not in self._values:
