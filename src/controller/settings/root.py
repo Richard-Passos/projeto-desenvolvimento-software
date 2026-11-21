@@ -1,7 +1,7 @@
 from collections.abc import Callable, Sequence
 
 from model.instrument import Instrument
-from model.settings import Settings
+from model.music import Music
 from model.shortcut import Shortcut, ShortcutCollection
 
 type View = Callable[[str], None]
@@ -12,15 +12,15 @@ type Instruments = Sequence[Instrument]
 class SettingsController:
     def __init__(
         self,
-        settings: Settings,
+        voices: Music,
         instruments: Instruments,
         shortcuts: ShortcutCollection,
         view: View = print,
     ) -> None:
-        self._view: View = view
-        self._settings: Settings = settings
-        self._instruments: Instruments = instruments
-        self._shortcuts: ShortcutCollection = shortcuts
+        self._view = view
+        self._voices = voices
+        self._instruments = instruments
+        self._shortcuts = shortcuts
 
     def instruments(self) -> Instruments:
         return self._instruments
@@ -38,6 +38,6 @@ class SettingsController:
         return True
 
     def hydrate(self) -> None:
-        # TODO update settings view
+        # TODO update voices view
         self._view('Shrotcuts Main Hydrated')
         self._view('Shrotcuts Modal Hydrated')
