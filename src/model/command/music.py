@@ -128,6 +128,6 @@ class RestCommand(Command[RestControl]):
         handler.rest(self._duration)
 
 
-class RedoCommand(Command[RestControl]):
-    def execute(self, handler: RestControl) -> None:
+class RedoCommand(Command[RedoControl]):
+    def execute(self, handler: RedoControl) -> None:
         handler.redo()

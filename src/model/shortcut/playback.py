@@ -1,61 +1,55 @@
-from typing import Protocol
+from collections.abc import Sequence
+
+from model.command.playback import (
+    Pausable,
+    PauseCommand,
+    Playable,
+    PlayCommand,
+    Stopable,
+    StopCommand,
+)
 
 from .root import Shortcut
 
 
-class Playable(Protocol):
-    def play(self) -> None: ...
-
-
-class Pausable(Protocol):
-    def pause(self) -> None: ...
-
-
-class Stopable(Protocol):
-    def stop(self) -> None: ...
-
-
 # TODO tests
-class PlayShortcut(Shortcut):
-    def __init__(self, playback: Playable, *keys: Shortcut.Key) -> None:
-        super().__init__(*keys)
-        self._playback: Playable = playback
+class PlayShortcut(Shortcut[Playable]):
+    def __init__(self, keys: Sequence[Shortcut.Key]) -> None:
+        self._keys = keys
 
-    def name(self) -> str:
-        return 'Playback play name'
+    def keys(self) -> Sequence[Shortcut.Key]:
+        return self._keys
 
-    def image(self) -> str:
-        return 'Playback play image'
+    def match(self, key: Shortcut.Key) -> PlayCommand | None:
+        if key in self._keys:
+            return PlayCommand()
 
-    def execute(self) -> None:
-        self._playback.play()
-
-
-class PauseShortcut(Shortcut):
-    def __init__(self, playback: Pausable, *keys: Shortcut.Key) -> None:
-        super().__init__(*keys)
-        self._playback: Pausable = playback
-
-    def name(self) -> str:
-        return 'Playback pause name'
-
-    def image(self) -> str:
-        return 'Playback pause image'
-
-    def execute(self) -> None:
-        self._playback.pause()
+        return None
 
 
-class StopShortcut(Shortcut):
-    def __init__(self, playback: Stopable, *keys: Shortcut.Key) -> None:
-        super().__init__(*keys)
-        self._playback: Stopable = playback
+class PauseShortcut(Shortcut[Pausable]):
+    def __init__(self, keys: Sequence[Shortcut.Key]) -> None:
+        self._keys = keys
 
-    def name(self) -> str:
-        return 'Playback stop name'
+    def keys(self) -> Sequence[Shortcut.Key]:
+        return self._keys
 
-    def image(self) -> str:
-        return 'Playback stop image'
+    def match(self, key: Shortcut.Key) -> PauseCommand | None:
+        if key in self._keys:
+            return PauseCommand()
 
-    def execute(self) -> None:
-        self._playback.stop()
+        return None
+
+
+class StopShortcut(Shortcut[Stopable]):
+    def __init__(self, keys: Sequence[Shortcut.Key]) -> None:
+        self._keys = keys
+
+    def keys(self) -> Sequence[Shortcut.Key]:
+        return self._keys
+
+    def match(self, key: Shortcut.Key) -> StopCommand | None:
+        if key in self._keys:
+            return StopCommand()
+
+        return None
