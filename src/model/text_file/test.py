@@ -35,7 +35,9 @@ class TextFileTestCase(unittest.TestCase):
 
 class PathTest(TextFileTestCase):
     def test_exposes_the_path_given_as_str_or_path(self) -> None:
-        for path in (str(self.target), self.target):
+        paths: tuple[str | Path, ...] = (str(self.target), self.target)
+
+        for path in paths:
             with self.subTest(type=type(path).__name__):
                 self.assertEqual(TextFile(path).path(), self.target)
 
