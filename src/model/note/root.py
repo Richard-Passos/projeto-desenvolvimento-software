@@ -1,6 +1,8 @@
 from enum import IntEnum
 
-from model.context import Context
+from model.octave import Octave
+from model.volume import Volume
+from utils.error import OutOfRangeError
 
 
 class NoteId(IntEnum):
@@ -29,35 +31,55 @@ class NoteId(IntEnum):
 
 # TODO tests
 class Note:
-    def __init__(self, id: NoteId, start: int, duration: int, context: Context) -> None:
-        self._id: NoteId = id
-        self._start: int = start
-        self._duration: int = duration
-        self._context: Context = context
+    MIN_DURATION: int = 0
+    MAX_DURATION: int = 7
 
-    def id(self) -> NoteId:
-        return self._id
+    def __init__(
+        self, id: NoteId, duration: int, volume: Volume, octave: Octave
+    ) -> None:
+        if not self.in_range(duration):
+            raise DurationOutOfRangeError(
+                duration, self.MIN_DURATION, self.MAX_DURATION
+            )
 
-    def start(self) -> int:
-        return self._start
+        self._id = id
+        self._duration = duration
+        self._volume = volume
+        self._octave = octave
 
-    def duration(self) -> int:
-        return self._duration
+    def id(self) -> int:
+        return self._id.value
 
-    def end(self) -> int:
-        return self._start + self._duration
+    def duration(self) -> float:
+        return 1.0 / 2.0 ** (self._duration - 1)
 
-    def context(self) -> Context:
-        return self._context
+    def volume(self) -> Volume:
+        return self._volume
+
+    def octave(self) -> Octave:
+        return self._octave
 
     def pitch(self) -> int:
-        return 12 * (self._context.octave().current() + 1) + self.id().value
+        return self._octave.pitch(self.id())
 
-    def instrument(self) -> int:
-        return self.context().instrument().id()
+    def with_(
+        self,
+        *,
+        id: NoteId | None = None,
+        duration: int | None = None,
+        volume: Volume | None = None,
+        octave: Octave | None = None,
+    ) -> Note:
+        return Note(
+            id=self._id if id is None else id,
+            duration=self._duration if duration is None else duration,
+            volume=self._volume if volume is None else volume,
+            octave=self._octave if octave is None else octave,
+        )
 
-    def volume(self) -> int:
-        return self.context().volume().current()
+    @classmethod
+    def in_range(cls, duration: int) -> bool:
+        return cls.MIN_DURATION <= duration <= cls.MAX_DURATION
 
-    def with_context(self, context: Context) -> 'Note':
-        return Note(self.id(), self.start(), self.duration(), context)
+
+class DurationOutOfRangeError(OutOfRangeError): ...

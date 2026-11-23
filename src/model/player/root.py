@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
 
 
-# TODO tests
 class Player(ABC):
     @abstractmethod
-    def load(self, path: str) -> None: ...
+    def load(self, path: str) -> bool: ...
 
     @abstractmethod
     def play(self) -> None: ...

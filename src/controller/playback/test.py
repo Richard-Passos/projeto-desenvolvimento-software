@@ -6,7 +6,7 @@ from model.playback import Playback
 from .root import PlaybackController
 
 
-# Ia Code
+# IA Code
 class PlaybackControllerTest(unittest.TestCase):
     def setUp(self) -> None:
         self.playback = Mock(spec=Playback)

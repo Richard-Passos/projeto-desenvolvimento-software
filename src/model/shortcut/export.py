@@ -1,23 +1,21 @@
-from typing import Protocol
+from collections.abc import Sequence
+
+from model.command.exporter import ExporterCommand, ExporterControl
 
 from .root import Shortcut
 
 
-class Exporter(Protocol):
-    def export(self) -> None: ...
-
-
 # TODO tests
-class ExportShortcut(Shortcut):
-    def __init__(self, exporter: Exporter, *keys: Shortcut.Key) -> None:
-        super().__init__(*keys)
-        self._exporter: Exporter = exporter
+class ExportShortcut(Shortcut[ExporterControl]):
+    def __init__(self, path: str, keys: Sequence[Shortcut.Key]) -> None:
+        self._path = path
+        self._keys = keys
 
-    def name(self) -> str:
-        return 'Export name'
+    def keys(self) -> Sequence[Shortcut.Key]:
+        return self._keys
 
-    def image(self) -> str:
-        return 'Export image'
+    def match(self, key: Shortcut.Key) -> ExporterCommand | None:
+        if key in self._keys:
+            return ExporterCommand(self._path)
 
-    def execute(self) -> None:
-        self._exporter.export()
+        return None

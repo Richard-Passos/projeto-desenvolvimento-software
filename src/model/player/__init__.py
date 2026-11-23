@@ -1,3 +1,4 @@
+from .pygame import PygamePlayer
 from .root import Player
 
-__all__ = ['Player']
+__all__ = ['Player', 'PygamePlayer']
