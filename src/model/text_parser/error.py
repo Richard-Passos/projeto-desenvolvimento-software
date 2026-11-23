@@ -26,5 +26,5 @@ class ParseError(ValueError):
         return f'Reason of error: {self._row} at index {self._index}'
 
     @classmethod
-    def rule(cls, index: int, row: str) -> 'ParseError':
+    def rule(cls, index: int, row: str) -> ParseError:
         return cls(ParseErrorCode.RULE, index, row)
