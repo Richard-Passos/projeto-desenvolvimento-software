@@ -3,6 +3,7 @@ from typing import Protocol
 from .root import Command
 
 
+# TODO tests
 class GeneratorControl(Protocol):
     def generate(self) -> None: ...
 

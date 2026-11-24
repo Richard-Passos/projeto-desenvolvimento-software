@@ -41,24 +41,24 @@ class Commander:
 
 class TestTextParser(unittest.TestCase):
     def setUp(self) -> None:
-        self.control = FakeControl()
-        self.parser = TextParser[FakeControl](Commander())
+        self._control = FakeControl()
+        self._parser = TextParser[FakeControl](Commander())
 
     def test_empty_text_does_not_add_voices(self) -> None:
-        self.parser.parse('', self.control)
-        self.assertEqual(self.control.voices(), [])
+        self._parser.parse('', self._control)
+        self.assertEqual(self._control.voices(), [])
 
     def test_each_line_adds_a_voice_with_its_notes_in_order(self) -> None:
-        self.parser.parse('C D\nE', self.control)
-        self.assertEqual(self.control.voices(), [['C', 'D'], ['E']])
+        self._parser.parse('C D\nE', self._control)
+        self.assertEqual(self._control.voices(), [['C', 'D'], ['E']])
 
     def test_blank_line_adds_an_empty_voice(self) -> None:
-        self.parser.parse('C\n\nD', self.control)
-        self.assertEqual(self.control.voices(), [['C'], [], ['D']])
+        self._parser.parse('C\n\nD', self._control)
+        self.assertEqual(self._control.voices(), [['C'], [], ['D']])
 
     def test_trailing_newline_does_not_add_an_extra_voice(self) -> None:
-        self.parser.parse('C\n', self.control)
-        self.assertEqual(self.control.voices(), [['C']])
+        self._parser.parse('C\n', self._control)
+        self.assertEqual(self._control.voices(), [['C']])
 
 
 if __name__ == '__main__':

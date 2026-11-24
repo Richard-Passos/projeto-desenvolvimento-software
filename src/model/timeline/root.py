@@ -3,7 +3,6 @@ from collections.abc import Iterator
 
 
 # IA CODE
-# TODO tests
 class Timeline[T]:
     def __init__(self, initial: T | None = None) -> None:
         self._values: dict[int, T] = {} if initial is None else {0: initial}

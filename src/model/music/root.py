@@ -4,7 +4,6 @@ from model.bpm import Bpm
 from model.voice import Voice
 
 
-# TODO tests
 class Music:
     def __init__(self, bpm: Bpm, voices: Sequence[Voice]) -> None:
         self._bpm = bpm

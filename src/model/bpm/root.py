@@ -1,7 +1,6 @@
 from utils.error import OutOfRangeError
 
 
-# TODO tests
 class Bpm:
     MIN: int = 20
     MAX: int = 300

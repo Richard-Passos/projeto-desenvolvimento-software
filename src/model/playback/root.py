@@ -11,7 +11,6 @@ class PlaybackState(Enum):
     PAUSED = auto()
 
 
-# TODO tests
 class Playback:
     def __init__(self, file: MidiFile, player: Player) -> None:
         self._file = file
@@ -57,7 +56,7 @@ class Playback:
         return self.state() is PlaybackState.PAUSED
 
     def stopped(self) -> bool:
-        return self.state() is PlaybackState.PAUSED
+        return self.state() is PlaybackState.STOPPED
 
     def state(self) -> PlaybackState:
         ended = self._state is PlaybackState.PLAYING and not self._player.busy()

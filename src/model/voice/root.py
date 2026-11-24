@@ -3,7 +3,6 @@ from model.octave import Octave
 from model.volume import Volume
 
 
-# TODO tests
 class Voice:
     def __init__(self, volume: Volume, octave: Octave, instrument: Instrument) -> None:
         self._volume = volume

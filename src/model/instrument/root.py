@@ -1,7 +1,6 @@
 from utils.error import OutOfRangeError
 
 
-# TODO tests
 class Instrument:
     MIN: int = 0
     MAX: int = 127

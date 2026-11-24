@@ -37,7 +37,6 @@ class BpmRule(Rule[MusicControl]):
         return self._map[match.group('BPM')]
 
 
-# TODO tests
 class InstrumentRule(Rule[MusicControl]):
     def __init__(self) -> None:
         self._map: dict[str, Command[MusicControl]] = {
@@ -65,7 +64,6 @@ class InstrumentRule(Rule[MusicControl]):
         return InstrumentShiftCommand(value)
 
 
-# TODO tests
 class NoteRule(Rule[MusicControl]):
     def __init__(self) -> None:
         self._map: dict[str, NoteId] = {
@@ -105,7 +103,6 @@ class NoteRule(Rule[MusicControl]):
         return NoteAddCommand(id, duration)
 
 
-# TODO tests
 class OctaveRule(Rule[MusicControl]):
     def __init__(self) -> None:
         self._map: dict[str, Command[MusicControl]] = {
@@ -124,7 +121,6 @@ class OctaveRule(Rule[MusicControl]):
         return command
 
 
-# TODO tests
 class RedoRule(Rule[MusicControl]):
     def __init__(self) -> None:
         self._pattern = re.compile(r'.|\s')
@@ -136,7 +132,6 @@ class RedoRule(Rule[MusicControl]):
         return RedoCommand()
 
 
-# TODO tests
 class RestRule(Rule[MusicControl]):
     def __init__(self) -> None:
         self._pattern = re.compile(r'\[(?P<DURATION>\d+)\]')
@@ -150,7 +145,6 @@ class RestRule(Rule[MusicControl]):
         return RestCommand(duration)
 
 
-# TODO tests
 class VolumeRule(Rule[MusicControl]):
     def __init__(self) -> None:
         self._map: dict[str, Command[MusicControl]] = {' ': VolumeDoubleCommand()}
