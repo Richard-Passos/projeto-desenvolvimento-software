@@ -29,7 +29,6 @@ class NoteId(IntEnum):
     B_SHARP = 72
 
 
-# TODO tests
 class Note:
     MIN_DURATION: int = 0
     MAX_DURATION: int = 7
