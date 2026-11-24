@@ -3,7 +3,6 @@ import pygame
 from .root import Player
 
 
-# TODO tests
 class PygamePlayer(Player):
     def __init__(self) -> None:
         pygame.mixer.init()
