@@ -1,7 +1,6 @@
 from utils.error import Error
 
 
-# TODO tests
 class MidiFile:
     def __init__(self, path: str, duration: float) -> None:
         try:
@@ -13,8 +12,8 @@ class MidiFile:
         if duration <= 0.0:
             raise NonPositiveDurationError(duration)
 
-        self._path: str = path
-        self._duration: float = 0
+        self._path = path
+        self._duration = duration
 
     def path(self) -> str:
         return self._path
