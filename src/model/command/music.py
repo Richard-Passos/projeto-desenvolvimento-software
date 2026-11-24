@@ -5,6 +5,7 @@ from model.note import NoteId
 from .root import Command
 
 
+# TODO tests
 class BpmIncreaseControl(Protocol):
     def increase_bpm(self) -> None: ...
 

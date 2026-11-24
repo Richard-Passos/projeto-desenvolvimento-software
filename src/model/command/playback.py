@@ -3,6 +3,7 @@ from typing import Protocol
 from .root import Command
 
 
+# TODO test
 class Playable(Protocol):
     def play(self) -> None: ...
 
@@ -15,7 +16,6 @@ class Stopable(Protocol):
     def stop(self) -> None: ...
 
 
-# TODO test
 class PlayCommand(Command[Playable]):
     def execute(self, handler: Playable) -> None:
         handler.play()
