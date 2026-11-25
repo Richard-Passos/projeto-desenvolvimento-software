@@ -1,4 +1,4 @@
-from midiutil import MIDIFile
+import midiutil
 
 from model.bpm import Bpm
 from model.instrument import Instrument
@@ -17,10 +17,10 @@ class MidiFileGenerator:
     MAX_VOICES: int = 16
 
     def __init__(self) -> None:
-        self._file = MIDIFile()
+        self._file = midiutil.MIDIFile()
         self._duration: float = 0
 
-    def generate(self, path: MidiPath, music: MusicTimeline) -> MIDIFile:
+    def generate(self, path: MidiPath, music: MusicTimeline) -> MidiFile:
         if not self.MIN_VOICES <= len(music.voices()) <= self.MAX_VOICES:
             raise VoicesOutOfRangeError(
                 len(music.voices()), self.MIN_VOICES, self.MAX_VOICES
