@@ -27,14 +27,14 @@ class FakeControl:
 
 
 class FakeCommand(Command[FakeControl]):
-    def __init__(self, note: str):
+    def __init__(self, note: str) -> None:
         self._note = note
 
     def execute(self, handler: FakeControl) -> None:
         handler.add_note(self._note)
 
 
-class Commander:
+class FakeCommander:
     def commands(self, text: str) -> list[Command[FakeControl]]:
         return [FakeCommand(note) for note in text.split()]
 
@@ -42,23 +42,29 @@ class Commander:
 class TestTextParser(unittest.TestCase):
     def setUp(self) -> None:
         self._control = FakeControl()
-        self._parser = TextParser[FakeControl](Commander())
+        self._creator = Mock(return_value=self._control)
+        self._parser = TextParser[FakeControl](self._creator, FakeCommander())
 
     def test_empty_text_does_not_add_voices(self) -> None:
-        self._parser.parse('', self._control)
+        self._parser.parse('')
         self.assertEqual(self._control.voices(), [])
 
     def test_each_line_adds_a_voice_with_its_notes_in_order(self) -> None:
-        self._parser.parse('C D\nE', self._control)
+        self._parser.parse('C D\nE')
         self.assertEqual(self._control.voices(), [['C', 'D'], ['E']])
 
     def test_blank_line_adds_an_empty_voice(self) -> None:
-        self._parser.parse('C\n\nD', self._control)
+        self._parser.parse('C\n\nD')
         self.assertEqual(self._control.voices(), [['C'], [], ['D']])
 
     def test_trailing_newline_does_not_add_an_extra_voice(self) -> None:
-        self._parser.parse('C\n', self._control)
+        self._parser.parse('C\n')
         self.assertEqual(self._control.voices(), [['C']])
+
+    def test_parse_returns_the_timeline_from_the_created_control(self) -> None:
+        timeline = self._parser.parse('C')
+        self._creator.assert_called_once_with()
+        self.assertIs(timeline, self._control.timeline())
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Protocol
 
 from model.command import Command
@@ -16,10 +16,13 @@ class TimelineControl(Protocol):
 
 
 class TextParser[T: TimelineControl]:
-    def __init__(self, commander: Commander[T]) -> None:
+    def __init__(self, creator: Callable[[], T], commander: Commander[T]) -> None:
+        self._creator = creator
         self._commander = commander
 
-    def parse(self, text: str, control: T) -> MusicTimeline:
+    def parse(self, text: str) -> MusicTimeline:
+        control = self._creator()
+
         for content in text.splitlines():
             commands = self._commander.commands(content)
             control.add_voice()
