@@ -1,5 +1,5 @@
 from .midi import MidiPath
-from .root import InvalidExtensionError, NoExtensionError, Path, PathNotFoundError
+from .root import InvalidExtensionError, NoExtensionError, Path
 from .text import TextPath
 
 __all__ = [
@@ -7,6 +7,5 @@ __all__ = [
     'MidiPath',
     'NoExtensionError',
     'Path',
-    'PathNotFoundError',
     'TextPath',
 ]
