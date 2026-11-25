@@ -7,8 +7,6 @@ from utils.error import ExpectError
 class Path(ABC):
     def __init__(self, path: str) -> None:
         target = pathlib.Path(path)
-        if not target.exists():
-            raise PathNotFoundError()
 
         if not target.suffix:
             raise NoExtensionError()
@@ -21,11 +19,11 @@ class Path(ABC):
     def name(self) -> str:
         return self._path.name
 
+    def exists(self) -> bool:
+        return self._path.exists()
+
     @abstractmethod
     def extension(self) -> str: ...
-
-
-class PathNotFoundError(Exception): ...
 
 
 class NoExtensionError(Exception): ...
