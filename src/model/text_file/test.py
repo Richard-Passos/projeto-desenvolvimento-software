@@ -1,123 +1,66 @@
-import tempfile
+import pathlib
 import unittest
-from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import Mock, patch
 
-from model.text_file import TextFile, TextFileError, TextFileErrorCode
+from model.path import Path
 
-
-class TextFileErrorTest(unittest.TestCase):
-    def test_keeps_its_code(self) -> None:
-        for code in TextFileErrorCode:
-            with self.subTest(code=code):
-                error = TextFileError(code)
-
-                self.assertEqual(error.code, code)
-                self.assertEqual(str(error), code.value)
+from .root import InvalidTextExtensionError, ReadFailedError, TextFile
 
 
-class TextFileTestCase(unittest.TestCase):
+# IA Code
+class TestTextFile(unittest.TestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmp.cleanup)
-        self.encoding = TextFile.ENCODING
+        directory = self.enterClassContext(TemporaryDirectory())
+        self._filename = str(pathlib.Path(directory) / 'song.txt')
+        self._path = Mock(spec_set=Path)
+        self._path.name.return_value = self._filename
+        self._path.extension.return_value = '.txt'
+        self._file = TextFile(self._path)
 
-        self.file = 'song'
-        self.extension = TextFile.DEFAULT_EXTENSION
-        self.folder = Path(self._tmp.name)
-        self.target = self.folder / f'{self.file}{self.extension}'
+    def test_accepts_a_txt_file_and_returns_the_given_name(self) -> None:
+        self.assertEqual(self._file.path(), self._filename)
 
-    def write(self, text: str) -> None:
-        self.target.write_bytes(text.encode(self.encoding))
+    def test_rejects_a_file_with_a_non_txt_extension(self) -> None:
+        self._path.extension.return_value = '.mid'
 
-    def stored(self) -> str:
-        return self.target.read_bytes().decode(self.encoding)
+        with self.assertRaises(InvalidTextExtensionError):
+            TextFile(self._path)
 
+    def test_read_preserves_utf8_text_and_line_endings(self) -> None:
+        text = 'music\r\nsecond line\n'
+        with open(self._filename, 'wb') as file:
+            file.write(text.encode('utf-8'))
 
-class PathTest(TextFileTestCase):
-    def test_exposes_the_path_given_as_str_or_path(self) -> None:
-        paths: tuple[str | Path, ...] = (str(self.target), self.target)
+        self.assertEqual(self._file.read(), text)
 
-        for path in paths:
-            with self.subTest(type=type(path).__name__):
-                self.assertEqual(TextFile(path).path(), self.target)
+    def test_write_replaces_the_contents_and_preserves_line_endings(self) -> None:
+        with open(self._filename, 'wb') as file:
+            file.write(b'previous contents that must be replaced completely')
 
-    def test_adds_default_extension_when_missing(self) -> None:
-        text_file = TextFile(self.folder / self.file)
+        text = 'music\r\nend\n'
+        self.assertTrue(self._file.write(text))
 
-        self.assertEqual(text_file.path(), self.target)
+        with open(self._filename, 'rb') as file:
+            self.assertEqual(file.read(), text.encode('utf-8'))
 
-    def test_keeps_the_given_extension(self) -> None:
-        target = self.folder / 'song.abc'
+    def test_read_raises_an_error_when_the_file_is_missing(self) -> None:
+        with self.assertRaises(ReadFailedError):
+            self._file.read()
 
-        self.assertEqual(TextFile(target).path(), target)
+    def test_read_raises_an_error_for_invalid_utf8(self) -> None:
+        with open(self._filename, 'wb') as file:
+            file.write(b'\xff')
 
-    def test_empty_path_raises(self) -> None:
-        for path in ('', '   ', '.', '/'):
-            with self.subTest(path=path):
-                with self.assertRaises(TextFileError) as context:
-                    TextFile(path)
+        with self.assertRaises(ReadFailedError):
+            self._file.read()
 
-                self.assertEqual(context.exception.code, TextFileErrorCode.EMPTY_PATH)
+    def test_write_returns_false_when_permission_is_denied(self) -> None:
+        with patch('builtins.open', side_effect=PermissionError):
+            self.assertFalse(self._file.write('music'))
 
-
-class WriteTest(TextFileTestCase):
-    def test_saves_text_and_returns_true(self) -> None:
-        self.assertTrue(TextFile(self.target).write('ABC'))
-        self.assertEqual(self.stored(), 'ABC')
-
-    def test_keeps_the_text_exactly_as_typed(self) -> None:
-        text = '  Lá  \r\n\n   \nB \n\n'
-
-        TextFile(self.target).write(text)
-
-        self.assertEqual(self.target.read_bytes(), text.encode(self.encoding))
-
-    def test_overwrites_existing_file(self) -> None:
-        self.write('old')
-
-        TextFile(self.target).write('new')
-
-        self.assertEqual(self.stored(), 'new')
-
-    def test_returns_false_when_the_folder_does_not_exist(self) -> None:
-        target = self.folder / 'missing' / 'song.txt'
-
-        self.assertFalse(TextFile(target).write('ABC'))
-
-    def test_returns_false_when_the_text_cannot_be_encoded(self) -> None:
-        self.assertFalse(TextFile(self.target).write('\ud800'))
-
-
-class ReadTest(TextFileTestCase):
-    def test_returns_the_text_as_stored(self) -> None:
-        self.target.write_bytes('Lá\r\né Sol?\n'.encode(self.encoding))
-
-        self.assertEqual(TextFile(self.target).read(), 'Lá\r\né Sol?\n')
-
-    def test_missing_file_raises_not_found_and_keeps_the_cause(self) -> None:
-        with self.assertRaises(TextFileError) as context:
-            TextFile(self.target).read()
-
-        self.assertEqual(context.exception.code, TextFileErrorCode.NOT_FOUND)
-        self.assertIsInstance(context.exception.__cause__, FileNotFoundError)
-
-    def test_os_failure_raises_read_failed_and_keeps_the_cause(self) -> None:
-        self.target.mkdir()
-
-        with self.assertRaises(TextFileError) as context:
-            TextFile(self.target).read()
-
-        self.assertEqual(context.exception.code, TextFileErrorCode.READ_FAILED)
-        self.assertIsInstance(context.exception.__cause__, OSError)
-
-    def test_invalid_encoding_raises_read_failed_and_keeps_the_cause(self) -> None:
-        self.target.write_bytes(b'\xff\xfe\xfa')
-
-        with self.assertRaises(TextFileError) as context:
-            TextFile(self.target).read()
-
-        self.assertEqual(context.exception.code, TextFileErrorCode.READ_FAILED)
-        self.assertIsInstance(context.exception.__cause__, UnicodeDecodeError)
+    def test_write_returns_false_when_text_cannot_be_encoded_as_utf8(self) -> None:
+        self.assertFalse(self._file.write('\ud800'))
 
 
 if __name__ == '__main__':
