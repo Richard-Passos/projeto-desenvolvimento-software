@@ -13,12 +13,12 @@ class PlaybackState(Enum):
 
 class Playback:
     def __init__(self, file: MidiFile, player: Player) -> None:
+        if not player.load(file.path()):
+            raise LoadFailedError(file.path())
+
         self._file = file
         self._player = player
         self._state: PlaybackState = PlaybackState.STOPPED
-
-        if not player.load(file.path()):
-            raise LoadFailedError(file.path())
 
     def play(self) -> None:
         if self.state() is PlaybackState.PLAYING:

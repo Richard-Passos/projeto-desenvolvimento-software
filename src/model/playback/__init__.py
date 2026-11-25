@@ -1,3 +1,3 @@
-from .root import Playback, PlaybackState
+from .root import LoadFailedError, Playback, PlaybackState
 
-__all__ = ['Playback', 'PlaybackState']
+__all__ = ['LoadFailedError', 'Playback', 'PlaybackState']
