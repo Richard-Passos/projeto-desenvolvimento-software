@@ -1,3 +1,4 @@
-from .root import InvalidTextExtensionError, ReadFailedError, TextFile
+from .reader import TextFileReader
+from .root import ReadFailedError, TextFile
 
-__all__ = ['InvalidTextExtensionError', 'ReadFailedError', 'TextFile']
+__all__ = ['ReadFailedError', 'TextFile', 'TextFileReader']

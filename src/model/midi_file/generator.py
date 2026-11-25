@@ -4,6 +4,7 @@ from model.bpm import Bpm
 from model.instrument import Instrument
 from model.music import MusicTimeline
 from model.note import Note
+from model.path import MidiPath
 from utils.error import OutOfRangeError
 
 from .root import MidiFile
@@ -19,7 +20,7 @@ class MidiFileGenerator:
         self._file = MIDIFile()
         self._duration: float = 0
 
-    def generate(self, path: str, music: MusicTimeline) -> MIDIFile:
+    def generate(self, path: MidiPath, music: MusicTimeline) -> MIDIFile:
         if not self.MIN_VOICES <= len(music.voices()) <= self.MAX_VOICES:
             raise VoicesOutOfRangeError(
                 len(music.voices()), self.MIN_VOICES, self.MAX_VOICES
@@ -35,7 +36,7 @@ class MidiFileGenerator:
             for start, instrument in voice.instruments():
                 self._add_instrument(channel, start, instrument)
 
-        self._save(path)
+        self._save(path.name())
 
         return MidiFile(path, self._duration)
 

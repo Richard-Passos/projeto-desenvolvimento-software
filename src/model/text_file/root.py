@@ -1,4 +1,4 @@
-from model.path import Path
+from model.path import TextPath
 from utils.error import Error
 
 
@@ -6,12 +6,8 @@ class TextFile:
     """A text file on disk. Reads and writes the text exactly as it is."""
 
     ENCODING: str = 'utf-8'
-    EXTENSION: str = '.txt'
 
-    def __init__(self, path: Path) -> None:
-        if path.extension() != self.EXTENSION:
-            raise InvalidTextExtensionError(path.extension())
-
+    def __init__(self, path: TextPath) -> None:
         self._path = path
 
     def path(self) -> str:
@@ -39,6 +35,3 @@ class TextFile:
 
 
 class ReadFailedError(Error[str]): ...
-
-
-class InvalidTextExtensionError(Error[str]): ...

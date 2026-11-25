@@ -3,9 +3,9 @@ import unittest
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
-from model.path import Path
+from model.path import TextPath
 
-from .root import InvalidTextExtensionError, ReadFailedError, TextFile
+from .root import ReadFailedError, TextFile
 
 
 # IA Code
@@ -13,19 +13,12 @@ class TestTextFile(unittest.TestCase):
     def setUp(self) -> None:
         directory = self.enterClassContext(TemporaryDirectory())
         self._filename = str(pathlib.Path(directory) / 'song.txt')
-        self._path = Mock(spec_set=Path)
+        self._path = Mock(spec=TextPath)
         self._path.name.return_value = self._filename
-        self._path.extension.return_value = '.txt'
         self._file = TextFile(self._path)
 
     def test_accepts_a_txt_file_and_returns_the_given_name(self) -> None:
         self.assertEqual(self._file.path(), self._filename)
-
-    def test_rejects_a_file_with_a_non_txt_extension(self) -> None:
-        self._path.extension.return_value = '.mid'
-
-        with self.assertRaises(InvalidTextExtensionError):
-            TextFile(self._path)
 
     def test_read_preserves_utf8_text_and_line_endings(self) -> None:
         text = 'music\r\nsecond line\n'

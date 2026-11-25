@@ -1,40 +1,30 @@
 import unittest
-from pathlib import Path
-from tempfile import TemporaryDirectory
+from unittest.mock import Mock
 
-from .root import MidiFile, MidiFileNotFoundError, NonPositiveDurationError
+from model.path import MidiPath
+
+from .root import MidiFile, NonPositiveDurationError
 
 
 # IA Code
 class TestMidiFile(unittest.TestCase):
     def setUp(self) -> None:
-        directory = TemporaryDirectory()
-        self._path = Path(directory.name) / 'song.mid'
-        self._path.touch()
-        self.addCleanup(directory.cleanup)
+        self._path = Mock(spec=MidiPath)
+        self._path.name.return_value = 'song.midi'
 
     def test_returns_the_given_path_and_duration(self) -> None:
         duration = 2.5
-        path = str(self._path)
-        midi_file = MidiFile(path, duration)
+        midi_file = MidiFile(self._path, duration)
 
-        self.assertEqual(midi_file.path(), path)
+        self.assertEqual(midi_file.path(), self._path.name())
         self.assertEqual(midi_file.duration(), duration)
 
-    def test_rejects_a_missing_file(self) -> None:
-        missing_path = self._path.with_name('missing.mid')
-
-        with self.assertRaises(MidiFileNotFoundError):
-            MidiFile(str(missing_path), 1)
-
     def test_rejects_non_positive_durations(self) -> None:
-        path = str(self._path)
+        with self.assertRaises(NonPositiveDurationError):
+            MidiFile(self._path, 0.0)
 
         with self.assertRaises(NonPositiveDurationError):
-            MidiFile(path, 0.0)
-
-        with self.assertRaises(NonPositiveDurationError):
-            MidiFile(path, -1.0)
+            MidiFile(self._path, -1.0)
 
 
 if __name__ == '__main__':

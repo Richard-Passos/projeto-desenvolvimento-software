@@ -1,13 +1,14 @@
 from collections.abc import Sequence
 
 from model.command.exporter import ExporterCommand, ExporterControl
+from model.path import Path
 
 from .root import Shortcut
 
 
 # TODO tests
 class ExportShortcut(Shortcut[ExporterControl]):
-    def __init__(self, path: str, keys: Sequence[Shortcut.Key]) -> None:
+    def __init__(self, path: Path, keys: Sequence[Shortcut.Key]) -> None:
         self._path = path
         self._keys = keys
 
