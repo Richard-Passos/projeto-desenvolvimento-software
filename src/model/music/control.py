@@ -14,12 +14,12 @@ from .timeline import MusicTimeline
 # TODO tests
 class MusicControl:
     def __init__(self, music: Music) -> None:
-        self._index: int = -1
         self._music = music
         self._cycle = cycle(music.voices())
         self._bpms = Timeline[Bpm](music.bpm())
-        self._voices = [VoiceControl(voice) for voice in music.voices()]
         self._last_action: Callable[[], None] | None = None
+
+        self.clear_voices()
 
     def timeline(self) -> MusicTimeline:
         voices = [voice.timeline() for voice in self._voices]
@@ -93,3 +93,7 @@ class MusicControl:
 
     def clear_action(self) -> None:
         self._last_action = None
+
+    def clear_voices(self) -> None:
+        self._index: int = -1
+        self._voices = [VoiceControl(voice) for voice in self._music.voices()]
