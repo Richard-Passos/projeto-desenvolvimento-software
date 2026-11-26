@@ -3,29 +3,38 @@ from typing import Protocol
 from .root import Command
 
 
-# TODO test
-class Playable(Protocol):
+# TODO tests
+class Player(Protocol):
     def play(self) -> None: ...
 
 
-class Pausable(Protocol):
+class Pauser(Protocol):
     def pause(self) -> None: ...
 
 
-class Stopable(Protocol):
+class Stopper(Protocol):
     def stop(self) -> None: ...
 
 
-class PlayCommand(Command[Playable]):
-    def execute(self, handler: Playable) -> None:
-        handler.play()
+class PlayCommand(Command):
+    def __init__(self, handler: Player) -> None:
+        self._handler = handler
+
+    def execute(self) -> None:
+        self._handler.play()
 
 
-class PauseCommand(Command[Pausable]):
-    def execute(self, handler: Pausable) -> None:
-        handler.pause()
+class PauseCommand(Command):
+    def __init__(self, handler: Pauser) -> None:
+        self._handler = handler
+
+    def execute(self) -> None:
+        self._handler.pause()
 
 
-class StopCommand(Command[Stopable]):
-    def execute(self, handler: Stopable) -> None:
-        handler.stop()
+class StopCommand(Command):
+    def __init__(self, handler: Stopper) -> None:
+        self._handler = handler
+
+    def execute(self) -> None:
+        self._handler.stop()

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
 
-class Command[T](ABC):
+class Command(ABC):
     @abstractmethod
-    def execute(self, handler: T) -> None: ...
+    def execute(self) -> None: ...
