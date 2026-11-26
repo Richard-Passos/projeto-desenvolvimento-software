@@ -8,12 +8,12 @@ from .root import NoMatchError, TextCommander
 
 
 # IA Code
-class Token(Command[list[str]]):
+class Token(Command):
     def __init__(self, value: str) -> None:
         self._value = value
 
-    def execute(self, handler: list[str]) -> None:
-        handler.append(self._value)
+    def execute(self) -> None:
+        return
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Token):
@@ -25,17 +25,22 @@ class Token(Command[list[str]]):
 class Rule:
     def __init__(self, pattern: str) -> None:
         self._pattern = re.compile(pattern)
+        self._match: Match | None = None
 
     def match(self, text: str) -> Match | None:
-        return self._pattern.match(text)
+        self._match = self._pattern.match(text)
+        return self._match
 
-    def command(self, match: Match) -> Token:
-        return Token(match.group())
+    def command(self) -> Token:
+        if self._match is None:
+            raise AssertionError('TextCommander called command() without a match.')
+
+        return Token(self._match.group())
 
 
 class TestTextCommander(unittest.TestCase):
-    def commander(self, rules: list[Rule] | None = None) -> TextCommander[list[str]]:
-        return TextCommander[list[str]]([] if rules is None else rules)
+    def commander(self, rules: list[Rule] | None = None) -> TextCommander:
+        return TextCommander(rules or [])
 
     def test_empty_text_produces_no_commands(self) -> None:
         commander = self.commander()
