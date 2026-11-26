@@ -1,3 +1,3 @@
-from .root import MidiFile
+from .root import MidiFile, NonPositiveDurationError
 
-__all__ = ['MidiFile']
+__all__ = ['MidiFile', 'NonPositiveDurationError']
