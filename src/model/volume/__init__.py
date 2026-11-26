@@ -1,3 +1,3 @@
-from .root import Volume
+from .root import Volume, VolumeOutOfRangeError
 
-__all__ = ['Volume']
+__all__ = ['Volume', 'VolumeOutOfRangeError']
