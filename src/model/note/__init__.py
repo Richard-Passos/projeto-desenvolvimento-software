@@ -1,3 +1,3 @@
-from .root import Note, NoteId
+from .root import DurationOutOfRangeError, Note, NoteId
 
-__all__ = ['Note', 'NoteId']
+__all__ = ['DurationOutOfRangeError', 'Note', 'NoteId']
