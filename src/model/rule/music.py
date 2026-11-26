@@ -1,159 +1,140 @@
-import re
+from collections.abc import Callable
+from typing import ClassVar
 
 from model.command import Command
-from model.command.music import (
-    BpmDecreaseCommand,
-    BpmIncreaseCommand,
-    InstrumentAddCommand,
-    InstrumentShiftCommand,
-    MusicControl,
-    NoteAddCommand,
-    OctaveDownCommand,
-    OctaveUpCommand,
-    RedoCommand,
-    RestCommand,
-    VolumeDoubleCommand,
-)
 from model.note import NoteId
-from utils.escape_keys import escape_keys
 from utils.type import Match
 
 from .root import Rule
 
 
-# TODO tests
-class BpmRule(Rule[MusicControl]):
-    def __init__(self) -> None:
-        self._map: dict[str, Command[MusicControl]] = {
-            '>': BpmIncreaseCommand(),
-            '<': BpmDecreaseCommand(),
-        }
-        self._pattern = re.compile(rf'(?P<BPM>{escape_keys(self._map)})')
-
-    def match(self, text: str) -> Match | None:
-        return self._pattern.match(text)
-
-    def command(self, match: Match) -> Command[MusicControl]:
-        return self._map[match.group('BPM')]
+class BpmIncreaseRule(Rule):
+    PATTERN: str = r'>'
 
 
-class InstrumentRule(Rule[MusicControl]):
-    def __init__(self) -> None:
-        self._map: dict[str, Command[MusicControl]] = {
-            '!': InstrumentAddCommand(24),
-            ',': InstrumentAddCommand(114),
-            ';': InstrumentAddCommand(15),
-            '1': InstrumentAddCommand(15),
-            '3': InstrumentAddCommand(15),
-            '5': InstrumentAddCommand(15),
-            '7': InstrumentAddCommand(15),
-            '9': InstrumentAddCommand(15),
-        }
-        self._pattern = re.compile(rf'(?P<INSTRUMENT>{escape_keys(self._map)}|\d)')
-
-    def match(self, text: str) -> Match | None:
-        return self._pattern.match(text)
-
-    def command(self, match: Match) -> Command[MusicControl]:
-        key = match.group('INSTRUMENT')
-
-        if key in self._map:
-            return self._map[key]
-
-        value = int(key)
-        return InstrumentShiftCommand(value)
+class BpmDecreaseRule(Rule):
+    PATTERN: str = r'<'
 
 
-class NoteRule(Rule[MusicControl]):
-    def __init__(self) -> None:
-        self._map: dict[str, NoteId] = {
-            'Cb': NoteId.C_FLAT,
-            'C': NoteId.C,
-            'C#': NoteId.C_SHARP,
-            'Db': NoteId.D_FLAT,
-            'D': NoteId.D,
-            'D#': NoteId.D_SHARP,
-            'Eb': NoteId.E_FLAT,
-            'E': NoteId.E,
-            'E#': NoteId.E_SHARP,
-            'Fb': NoteId.F_FLAT,
-            'F': NoteId.F,
-            'F#': NoteId.F_SHARP,
-            'Gb': NoteId.G_FLAT,
-            'G': NoteId.G,
-            'G#': NoteId.G_SHARP,
-            'Ab': NoteId.A_FLAT,
-            'A': NoteId.A,
-            'A#': NoteId.A_SHARP,
-            'Bb': NoteId.B_FLAT,
-            'B': NoteId.B,
-            'B#': NoteId.B_SHARP,
-        }
-        self._pattern = re.compile(
-            rf'(?P<NOTE>{escape_keys(self._map)}):(?P<DURATION>\d)'
-        )
-
-    def match(self, text: str) -> Match | None:
-        return self._pattern.match(text)
-
-    def command(self, match: Match) -> Command[MusicControl]:
-        id = self._map[match.group('NOTE')]
-        duration = int(match.group('DURATION'))
-
-        return NoteAddCommand(id, duration)
+class OctaveUpRule(Rule):
+    PATTERN: str = r'[?.]'
 
 
-class OctaveRule(Rule[MusicControl]):
-    def __init__(self) -> None:
-        self._map: dict[str, Command[MusicControl]] = {
-            '?': OctaveUpCommand(),
-            '.': OctaveUpCommand(),
-            'V': OctaveDownCommand(),
-        }
-        self._pattern = re.compile(rf'(?P<OCTAVE>{escape_keys(self._map)})')
-
-    def match(self, text: str) -> Match | None:
-        return self._pattern.match(text)
-
-    def command(self, match: Match) -> Command[MusicControl]:
-        command = self._map[match.group('OCTAVE')]
-
-        return command
+class OctaveDownRule(Rule):
+    PATTERN: str = r'V'
 
 
-class RedoRule(Rule[MusicControl]):
-    def __init__(self) -> None:
-        self._pattern = re.compile(r'.|\s')
-
-    def match(self, text: str) -> Match | None:
-        return self._pattern.match(text)
-
-    def command(self, _: Match) -> Command[MusicControl]:
-        return RedoCommand()
+class VolumeDoubleRule(Rule):
+    PATTERN: str = r' '
 
 
-class RestRule(Rule[MusicControl]):
-    def __init__(self) -> None:
-        self._pattern = re.compile(r'\[(?P<DURATION>\d+)\]')
-
-    def match(self, text: str) -> Match | None:
-        return self._pattern.match(text)
-
-    def command(self, match: Match) -> Command[MusicControl]:
-        duration = int(match.group('DURATION'))
-
-        return RestCommand(duration)
+class RedoRule(Rule):
+    PATTERN: str = r'.|\s'
 
 
-class VolumeRule(Rule[MusicControl]):
-    def __init__(self) -> None:
-        self._map: dict[str, Command[MusicControl]] = {' ': VolumeDoubleCommand()}
-        self._pattern = re.compile(rf'(?P<VOLUME>{escape_keys(self._map)})')
+class PatternMap[T]:
+    def __init__(self, map: dict[str, T]) -> None:
+        self._pattern: str = r''
+        self._values: dict[str, T] = {}
 
-    def match(self, text: str) -> Match | None:
-        return self._pattern.match(text)
+        for i, (pattern, value) in enumerate(map.items()):
+            group = f'OPTION[{i}]'
+            pattern += f'|(?P<{group}>{pattern})'
+            self._values[group] = value
+        self._pattern = self._pattern[1:]  # Remove the first '|'
 
-    def command(self, match: Match) -> Command[MusicControl]:
-        command = self._map[match.group('VOLUME')]
+    def pattern(self) -> str:
+        return self._pattern
 
-        return command
+    def value_for(self, match: Match) -> T:
+        for group, value in self._values.items():
+            if match[group] is not None:
+                return value
+
+        raise ValueError('No mapped pattern matched.')
+
+
+class RestRule(Rule):
+    PATTERN: str = r'\[\d+\]'
+
+    def __init__(
+        self, creator: Callable[[int, Match], Command], pattern: str | None = None
+    ) -> None:
+        pattern = pattern or self.PATTERN
+        pattern = rf'(?P<DURATION>{pattern})'
+
+        def command_from_duration(match: Match) -> Command:
+            return creator(int(match['DURATION']), match)
+
+        super().__init__(command_from_duration, pattern)
+
+
+class InstrumentShiftRule(Rule):
+    PATTERN: str = r'[2468]'
+
+    def __init__(
+        self, creator: Callable[[int, Match], Command], pattern: str | None = None
+    ) -> None:
+        pattern = pattern or self.PATTERN
+        pattern = rf'(?P<INSTRUMENT>{pattern})'
+
+        def command_from_amount(match: Match) -> Command:
+            return creator(int(match['INSTRUMENT']), match)
+
+        super().__init__(command_from_amount, pattern)
+
+
+class InstrumentAddRule(Rule):
+    MAP: ClassVar = {'!': 24, ',': 114, '[;13579]': 15}
+
+    def __init__(
+        self,
+        creator: Callable[[int, Match], Command],
+        map: dict[str, int] | None = None,
+    ) -> None:
+        instruments = PatternMap(map or self.MAP)
+
+        def command_from_match(match: Match) -> Command:
+            return creator(instruments.value_for(match), match)
+
+        super().__init__(command_from_match, instruments.pattern())
+
+
+class NoteRule(Rule):
+    MAP: ClassVar = {
+        'Cb': NoteId.C_FLAT,
+        'C': NoteId.C,
+        'C#': NoteId.C_SHARP,
+        'Db': NoteId.D_FLAT,
+        'D': NoteId.D,
+        'D#': NoteId.D_SHARP,
+        'Eb': NoteId.E_FLAT,
+        'E': NoteId.E,
+        'E#': NoteId.E_SHARP,
+        'Fb': NoteId.F_FLAT,
+        'F': NoteId.F,
+        'F#': NoteId.F_SHARP,
+        'Gb': NoteId.G_FLAT,
+        'G': NoteId.G,
+        'G#': NoteId.G_SHARP,
+        'Ab': NoteId.A_FLAT,
+        'A': NoteId.A,
+        'A#': NoteId.A_SHARP,
+        'Bb': NoteId.B_FLAT,
+        'B': NoteId.B,
+        'B#': NoteId.B_SHARP,
+    }
+
+    def __init__(
+        self,
+        creator: Callable[[NoteId, int, Match], Command],
+        duration_pattern: str,
+        map: dict[str, NoteId] | None = None,
+    ) -> None:
+        notes = PatternMap(map or self.MAP)
+        pattern = rf'(?P<NOTE>{notes.pattern()}):(?P<DURATION>{duration_pattern})'
+
+        def command_from_note(match: Match) -> Command:
+            return creator(notes.value_for(match), int(match['DURATION']), match)
+
+        super().__init__(command_from_note, pattern)
