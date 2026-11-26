@@ -1,14 +1,23 @@
-from abc import ABC, abstractmethod
 from collections.abc import Sequence
+from typing import Protocol
 
-from model.command import Command
+
+class Command(Protocol):
+    def execute(self) -> None: ...
 
 
-class Shortcut[T](ABC):
+class Shortcut:
     type Key = str | Sequence[str]
 
-    @abstractmethod
-    def keys(self) -> Sequence[Key]: ...
+    def __init__(self, command: Command, keys: Sequence[Key]) -> None:
+        self._command = command
+        self._keys = keys
 
-    @abstractmethod
-    def match(self, key: Shortcut.Key) -> Command[T] | None: ...
+    def keys(self) -> Sequence[Key]:
+        return self._keys
+
+    def command(self) -> Command:
+        return self._command
+
+    def match(self, key: Shortcut.Key) -> bool:
+        return key in self.keys()
