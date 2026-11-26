@@ -1,3 +1,3 @@
-from .root import Bpm
+from .root import Bpm, BpmOutOfRangeError
 
-__all__ = ['Bpm']
+__all__ = ['Bpm', 'BpmOutOfRangeError']
