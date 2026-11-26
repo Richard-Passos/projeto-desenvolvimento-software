@@ -23,31 +23,13 @@ class ShortcutItem:
 # TODO tests
 class ShortcutCollection:
     def __init__(self) -> None:
-        self._last_id: int = -1
-        self._items_by_id: dict[int, ShortcutItem] = {}
-        self._ids_by_key: dict[Shortcut.Key, int] = {}
+        self._items: dict[Shortcut.Key, ShortcutItem] = {}
 
     def add(self, name: str, image: str, shortcut: Shortcut) -> None:
-        id = self._new_id()
-        keys = shortcut.keys()
-
-        for key in keys:
-            self._ids_by_key[key] = id
-
-        self._items_by_id[id] = ShortcutItem(name, image, shortcut)
+        self._items[shortcut.key()] = ShortcutItem(name, image, shortcut)
 
     def get(self, key: Shortcut.Key) -> ShortcutItem | None:
-        id = self._ids_by_key.get(key)
-        if id is None:
-            return None
-
-        return self._items_by_id[id]
-
-    def _new_id(self) -> int:
-        id = self._last_id + 1
-        self._last_id = id
-
-        return id
+        return self._items.get(key)
 
     def __iter__(self) -> Iterator[ShortcutItem]:
-        return iter(self._items_by_id.values())
+        return iter(self._items.values())
