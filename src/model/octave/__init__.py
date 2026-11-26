@@ -1,3 +1,3 @@
-from .root import Octave
+from .root import Octave, OctaveOutOfRangeError
 
-__all__ = ['Octave']
+__all__ = ['Octave', 'OctaveOutOfRangeError']
