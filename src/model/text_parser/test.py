@@ -10,8 +10,10 @@ from .root import TextParser
 # IA Code
 class FakeControl:
     def __init__(self) -> None:
+        self.clear_voices()
+
+    def clear_voices(self) -> None:
         self._voices: list[list[str]] = []
-        self._timeline = Mock(spec=MusicTimeline)
 
     def add_voice(self) -> None:
         self._voices.append([])
@@ -23,27 +25,30 @@ class FakeControl:
         return self._voices
 
     def timeline(self) -> MusicTimeline:
-        return self._timeline
+        return Mock(spec=MusicTimeline)
 
 
-class FakeCommand(Command[FakeControl]):
-    def __init__(self, note: str) -> None:
+class FakeCommand(Command):
+    def __init__(self, handler: FakeControl, note: str) -> None:
+        self._handler = handler
         self._note = note
 
-    def execute(self, handler: FakeControl) -> None:
-        handler.add_note(self._note)
+    def execute(self) -> None:
+        self._handler.add_note(self._note)
 
 
 class FakeCommander:
-    def commands(self, text: str) -> list[Command[FakeControl]]:
-        return [FakeCommand(note) for note in text.split()]
+    def __init__(self, control: FakeControl) -> None:
+        self._control = control
+
+    def commands(self, text: str) -> list[Command]:
+        return [FakeCommand(self._control, note) for note in text.split()]
 
 
 class TestTextParser(unittest.TestCase):
     def setUp(self) -> None:
         self._control = FakeControl()
-        self._creator = Mock(return_value=self._control)
-        self._parser = TextParser[FakeControl](self._creator, FakeCommander())
+        self._parser = TextParser(self._control, FakeCommander(self._control))
 
     def test_empty_text_does_not_add_voices(self) -> None:
         self._parser.parse('')
@@ -60,11 +65,6 @@ class TestTextParser(unittest.TestCase):
     def test_trailing_newline_does_not_add_an_extra_voice(self) -> None:
         self._parser.parse('C\n')
         self.assertEqual(self._control.voices(), [['C']])
-
-    def test_parse_returns_the_timeline_from_the_created_control(self) -> None:
-        timeline = self._parser.parse('C')
-        self._creator.assert_called_once_with()
-        self.assertIs(timeline, self._control.timeline())
 
 
 if __name__ == '__main__':
