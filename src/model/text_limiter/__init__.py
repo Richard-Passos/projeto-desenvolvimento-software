@@ -1,3 +1,3 @@
-from .root import TextLimiter
+from .root import NonPositiveColsError, NonPositiveRowsError, TextLimiter
 
-__all__ = ['TextLimiter']
+__all__ = ['NonPositiveColsError', 'NonPositiveRowsError', 'TextLimiter']
