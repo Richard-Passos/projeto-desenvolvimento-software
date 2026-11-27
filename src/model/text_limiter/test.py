@@ -10,8 +10,8 @@ class TestTextLimiter(unittest.TestCase):
 
     def test_uses_default_limits(self) -> None:
         limits = TextLimiter()
-        self.assertEqual(limits.rows(), TextLimiter.MAX_ROWS)
-        self.assertEqual(limits.cols(), TextLimiter.MAX_COLS)
+        self.assertEqual(limits.rows(), TextLimiter.ROWS)
+        self.assertEqual(limits.cols(), TextLimiter.COLS)
 
     def test_uses_custom_limits(self) -> None:
         self.assertEqual(self._limits.rows(), 2)
