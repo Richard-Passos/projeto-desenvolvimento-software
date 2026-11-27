@@ -27,12 +27,12 @@ class ExportControllerTestCase(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
 
-        self.folder = Path(self._tmp.name)
-        self.out = self.folder / 'out'
-        self.out.mkdir()
+        self._folder = Path(self._tmp.name)
+        self._out = self._folder / 'out'
+        self._out.mkdir()
 
-        text_source = self.folder / 'source.txt'
-        midi_source = self.folder / 'source.mid'
+        text_source = self._folder / 'source.txt'
+        midi_source = self._folder / 'source.mid'
         text_source.write_bytes(TEXT_BYTES)
         midi_source.write_bytes(MIDI_BYTES)
         self.cases = {
@@ -42,11 +42,11 @@ class ExportControllerTestCase(unittest.TestCase):
 
         # The folder dialog needs a person: by default it picks `out`.
         self.dialog = create_autospec(FileDialog, instance=True)
-        self.dialog.ask_folder.return_value = self.out
+        self.dialog.ask_folder.return_value = self._out
         self.controller = ExportController(self.dialog)
 
     def nothing_exported(self) -> bool:
-        return not any(self.out.iterdir())
+        return not any(self._out.iterdir())
 
 
 class ExportTest(ExportControllerTestCase):
@@ -56,7 +56,7 @@ class ExportTest(ExportControllerTestCase):
                 done = self.controller.export(case.source, case.kind, 'song')
 
                 self.assertTrue(done)
-                copy = self.out / f'song{case.extension}'
+                copy = self._out / f'song{case.extension}'
                 self.assertEqual(copy.read_bytes(), case.content)
                 self.assertEqual(case.source.read_bytes(), case.content)
 
@@ -72,7 +72,7 @@ class ExportTest(ExportControllerTestCase):
                 with self.subTest(name, custom_name=custom_name):
                     self.controller.export(case.source, case.kind, custom_name)
 
-                    self.assertTrue((self.out / file_name).is_file())
+                    self.assertTrue((self._out / file_name).is_file())
 
     def test_accepts_the_path_as_str_or_path(self) -> None:
         case = self.cases['text']
@@ -81,7 +81,7 @@ class ExportTest(ExportControllerTestCase):
         self.assertTrue(self.controller.export(case.source, case.kind, 'b'))
 
     def test_given_destination_skips_the_dialog(self) -> None:
-        other = self.folder / 'other'
+        other = self._folder / 'other'
         other.mkdir()
         case = self.cases['text']
 
@@ -118,7 +118,7 @@ class RefusalTest(ExportControllerTestCase):
         self.assertTrue(self.nothing_exported())
 
     def test_missing_source_returns_false_before_the_dialog(self) -> None:
-        missing = self.folder / 'missing.txt'
+        missing = self._folder / 'missing.txt'
 
         self.assertFalse(self.controller.export(missing, ExportKind.TEXT, 'song'))
         self.dialog.ask_folder.assert_not_called()
@@ -126,7 +126,7 @@ class RefusalTest(ExportControllerTestCase):
     def test_existing_file_is_kept_unless_overwrite(self) -> None:
         for name, case in self.cases.items():
             with self.subTest(name):
-                existing = self.out / f'song{case.extension}'
+                existing = self._out / f'song{case.extension}'
                 existing.write_bytes(b'old')
 
                 self.assertFalse(self.controller.export(case.source, case.kind, 'song'))
@@ -140,7 +140,7 @@ class RefusalTest(ExportControllerTestCase):
                 self.assertEqual(existing.read_bytes(), case.content)
 
     def test_never_copies_a_file_over_itself(self) -> None:
-        inside = self.out / 'song.txt'
+        inside = self._out / 'song.txt'
         inside.write_bytes(TEXT_BYTES)
 
         done = self.controller.export(inside, ExportKind.TEXT, 'song', overwrite=True)
@@ -150,7 +150,7 @@ class RefusalTest(ExportControllerTestCase):
 
     def test_copy_failure_returns_false(self) -> None:
         case = self.cases['text']
-        missing_folder = self.folder / 'missing'
+        missing_folder = self._folder / 'missing'
 
         self.assertFalse(
             self.controller.export(case.source, case.kind, 'song', missing_folder)
