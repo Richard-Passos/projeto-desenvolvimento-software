@@ -1,160 +1,56 @@
-import tempfile
 import unittest
-from pathlib import Path
-from typing import NamedTuple
 from unittest.mock import create_autospec
 
-from controller.export import ExportController, ExportKind
-from view.file_dialog import FileDialog
+from model.path import Path
 
-# Blank lines, spaces, a tab, CRLF, a non-ASCII character and a final break.
-TEXT_BYTES = '  Lá  \r\n\n   \n\tB \n\n'.encode()
-# Header bytes, a CRLF, a null byte and 0xFF: nothing here is valid text.
-MIDI_BYTES = b'MThd\x00\x00\x00\x06\r\n\x00\xff'
+from .root import Copier, ExportController, View
 
 
-class Case(NamedTuple):
-    """What differs between exporting a text and exporting a MIDI."""
+# IA Code
+class FakePath(Path):
+    def __init__(self, file_name: str, file_extension: str) -> None:
+        self._file_name = file_name
+        self._file_extension = file_extension
+        super().__init__(f'{file_name}{file_extension}')
 
-    kind: ExportKind
-    extension: str
-    content: bytes
-    source: Path
+    def extension(self) -> str:
+        return self._file_extension
 
 
-class ExportControllerTestCase(unittest.TestCase):
+class TestExportController(unittest.TestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmp.cleanup)
+        self._view = create_autospec(View, instance=True)
+        self._copier = create_autospec(Copier, instance=True)
+        self._controller = ExportController(self._view, self._copier)
 
-        self.folder = Path(self._tmp.name)
-        self.out = self.folder / 'out'
-        self.out.mkdir()
+    def test_export_succeeds_when_copy_returns_true(self) -> None:
+        current = FakePath('source', '.txt')
+        destiny = FakePath('destiny', '.txt')
+        self._copier.copy.return_value = True
 
-        text_source = self.folder / 'source.txt'
-        midi_source = self.folder / 'source.mid'
-        text_source.write_bytes(TEXT_BYTES)
-        midi_source.write_bytes(MIDI_BYTES)
-        self.cases = {
-            'text': Case(ExportKind.TEXT, '.txt', TEXT_BYTES, text_source),
-            'midi': Case(ExportKind.MIDI, '.mid', MIDI_BYTES, midi_source),
-        }
+        result = self._controller.export(current, destiny)
 
-        # The folder dialog needs a person: by default it picks `out`.
-        self.dialog = create_autospec(FileDialog, instance=True)
-        self.dialog.ask_folder.return_value = self.out
-        self.controller = ExportController(self.dialog)
-
-    def nothing_exported(self) -> bool:
-        return not any(self.out.iterdir())
-
-
-class ExportTest(ExportControllerTestCase):
-    def test_copies_the_file_exactly_and_keeps_the_original(self) -> None:
-        for name, case in self.cases.items():
-            with self.subTest(name):
-                done = self.controller.export(case.source, case.kind, 'song')
-
-                self.assertTrue(done)
-                copy = self.out / f'song{case.extension}'
-                self.assertEqual(copy.read_bytes(), case.content)
-                self.assertEqual(case.source.read_bytes(), case.content)
-
-    def test_adds_the_extension_only_when_the_name_has_none(self) -> None:
-        for name, case in self.cases.items():
-            names = {
-                ' song ': f'song{case.extension}',
-                'my.song': 'my.song',
-                f'LOUD{case.extension.upper()}': f'LOUD{case.extension.upper()}',
-            }
-
-            for custom_name, file_name in names.items():
-                with self.subTest(name, custom_name=custom_name):
-                    self.controller.export(case.source, case.kind, custom_name)
-
-                    self.assertTrue((self.out / file_name).is_file())
-
-    def test_accepts_the_path_as_str_or_path(self) -> None:
-        case = self.cases['text']
-
-        self.assertTrue(self.controller.export(str(case.source), case.kind, 'a'))
-        self.assertTrue(self.controller.export(case.source, case.kind, 'b'))
-
-    def test_given_destination_skips_the_dialog(self) -> None:
-        other = self.folder / 'other'
-        other.mkdir()
-        case = self.cases['text']
-
-        destinations: dict[str, str | Path] = {'path': other, 'str': str(other)}
-
-        for name, destination in destinations.items():
-            with self.subTest(name):
-                self.assertTrue(
-                    self.controller.export(case.source, case.kind, name, destination)
-                )
-                self.assertTrue((other / f'{name}.txt').is_file())
-
-        self.dialog.ask_folder.assert_not_called()
-
-    def test_cancelled_dialog_returns_false_and_writes_nothing(self) -> None:
-        self.dialog.ask_folder.return_value = None
-
-        for name, case in self.cases.items():
-            with self.subTest(name):
-                self.assertFalse(self.controller.export(case.source, case.kind, 'song'))
-
-        self.assertTrue(self.nothing_exported())
-
-
-class RefusalTest(ExportControllerTestCase):
-    def test_invalid_names_return_false_before_the_dialog(self) -> None:
-        case = self.cases['text']
-
-        for name in ('', '   ', 'a/b', 'a\\b', '..\\evil', 'a:b', 'a?b', 'a*b'):
-            with self.subTest(name):
-                self.assertFalse(self.controller.export(case.source, case.kind, name))
-
-        self.dialog.ask_folder.assert_not_called()
-        self.assertTrue(self.nothing_exported())
-
-    def test_missing_source_returns_false_before_the_dialog(self) -> None:
-        missing = self.folder / 'missing.txt'
-
-        self.assertFalse(self.controller.export(missing, ExportKind.TEXT, 'song'))
-        self.dialog.ask_folder.assert_not_called()
-
-    def test_existing_file_is_kept_unless_overwrite(self) -> None:
-        for name, case in self.cases.items():
-            with self.subTest(name):
-                existing = self.out / f'song{case.extension}'
-                existing.write_bytes(b'old')
-
-                self.assertFalse(self.controller.export(case.source, case.kind, 'song'))
-                self.assertEqual(existing.read_bytes(), b'old')
-
-                done = self.controller.export(
-                    case.source, case.kind, 'song', overwrite=True
-                )
-
-                self.assertTrue(done)
-                self.assertEqual(existing.read_bytes(), case.content)
-
-    def test_never_copies_a_file_over_itself(self) -> None:
-        inside = self.out / 'song.txt'
-        inside.write_bytes(TEXT_BYTES)
-
-        done = self.controller.export(inside, ExportKind.TEXT, 'song', overwrite=True)
-
-        self.assertFalse(done)
-        self.assertEqual(inside.read_bytes(), TEXT_BYTES)
-
-    def test_copy_failure_returns_false(self) -> None:
-        case = self.cases['text']
-        missing_folder = self.folder / 'missing'
-
-        self.assertFalse(
-            self.controller.export(case.source, case.kind, 'song', missing_folder)
+        self.assertTrue(result)
+        self._copier.copy.assert_called_once_with(current, destiny)
+        self._view.show_success.assert_called_once_with(
+            f'Arquivo "{destiny.name()}" exportado com sucesso!'
         )
+        self._view.show_error.assert_not_called()
+
+    def test_export_fails_and_shows_error_when_copy_returns_false(self) -> None:
+        current = FakePath('source', '.mid')
+        destiny = FakePath('destiny', '.mid')
+        self._copier.copy.return_value = False
+
+        result = self._controller.export(current, destiny)
+
+        self.assertFalse(result)
+        self._copier.copy.assert_called_once_with(current, destiny)
+        self._view.show_error.assert_called_once_with(
+            f'Não foi possivel salvar “{destiny.name()}”. '
+            'Tente novamente ou escolha outra pasta.'
+        )
+        self._view.show_success.assert_not_called()
 
 
 if __name__ == '__main__':
