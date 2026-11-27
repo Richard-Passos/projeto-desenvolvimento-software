@@ -1,3 +1,3 @@
-from .root import SettingsController
+from .root import ShortcutsController
 
-__all__ = ['SettingsController']
+__all__ = ['ShortcutsController']
