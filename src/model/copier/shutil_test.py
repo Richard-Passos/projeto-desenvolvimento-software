@@ -2,7 +2,7 @@ import pathlib
 import unittest
 from tempfile import TemporaryDirectory
 
-from .shutil import Shutil_Copier
+from .shutil import ShutilCopier
 
 
 # IA Code
@@ -10,7 +10,7 @@ class TestShutilCopier(unittest.TestCase):
     def setUp(self) -> None:
         directory = self.enterContext(TemporaryDirectory())
         self._directory = pathlib.Path(directory)
-        self._copier = Shutil_Copier()
+        self._copier = ShutilCopier()
 
     def test_copies_file_to_destiny_and_returns_true(self) -> None:
         current = self._directory / 'source.txt'

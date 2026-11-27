@@ -4,7 +4,7 @@ from pathlib import Path
 from .root import Copier
 
 
-class Shutil_Copier(Copier):
+class ShutilCopier(Copier):
     def copy[T: Path](self, current: T, destiny: T) -> bool:
         try:
             shutil.copyfile(current, destiny)
