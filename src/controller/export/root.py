@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Protocol
 
 from model.path import Path
@@ -6,6 +7,7 @@ from model.path import Path
 class View(Protocol):
     def show_error(self, text: str) -> None: ...
     def show_success(self, text: str) -> None: ...
+    def on_export[T: Path](self, callback: Callable[[T, T], bool]) -> None: ...
 
 
 class Copier(Protocol):
@@ -18,6 +20,7 @@ class ExportController:
     def __init__(self, view: View, copier: Copier) -> None:
         self._view = view
         self._copier = copier
+        view.on_export(self.export)
 
     def export[T: Path](self, current: T, destiny: T) -> bool:
         if not self._copier.copy(current, destiny):
